@@ -83,75 +83,6 @@ function onRunClicked() {
 	sm.start();
 }
 
-// /**
-//  * Creates a labeled text input field inside a given container.
-//  *
-//  * @param {HTMLElement} container    - The parent element where this new field will be appended.
-//  * @param {string}      label        - The label for the input, provided in PascalCase (e.g., "UserName").
-//  * @param {string}      title        - The tooltip text displayed when hovering over the input field.
-//  * @param {string}      initialValue - The initial value that the input field will display.
-//  * @param {boolean}     isReadonly   - If true, the input field is set to read-only mode.
-//  * @param {Function}    setCallback  - A callback function invoked whenever the input's value changes.
-//  */
-// function newNameField(container, label, title, initialValue, isReadonly, setCallback) {
-// 	// Create a new paragraph element to contain the label and input field
-// 	const fieldContainer = document.createElement('p');
-
-// 	// Append the newly created field container to the provided parent container
-// 	container.appendChild(fieldContainer);
-
-// 	// Convert the label from PascalCase to space-separated words for display
-// 	const labelDisplayName = convertPascalToSpaceCase(label);
-
-// 	// Generate a unique identifier for the input field
-// 	const inputId = newUid();
-
-// 	// Set the inner HTML of the field container to the input field HTML
-// 	fieldContainer.innerHTML = `
-// 		<label>${labelDisplayName}</label>
-// 		<input
-// 			id='${inputId}'
-// 			data-g4-attribute='${label}'
-// 			title='${title}'
-// 			type='text'
-// 			cols='50'
-// 			spellcheck='false'
-// 			value='${initialValue}' />
-// 	`;
-
-// 	// Select the input element within the field container
-// 	const input = fieldContainer.querySelector('input');
-
-// 	// If the field should be read-only, set the 'readonly' attribute on the input
-// 	if (isReadonly) {
-// 		input.setAttribute('readonly', 'readonly');
-// 	}
-
-// 	// Add an event listener to handle input changes and invoke the callback with the new value
-// 	fieldContainer.addEventListener('input', () => setCallback(input.value));
-// }
-
-/**
- * Creates and appends a new title section to the specified container.
- *
- * @param {HTMLElement} container - The DOM element to which the new title section will be appended.
- * @param {string} titleText - The main title text to be displayed as an `<h2>` element.
- * @param {string} subTitleText - The subtitle text to be displayed within a `<span>` element with the class "subtitle".
- */
-function newTitle(container, titleText, subTitleText) {
-	// Create a new paragraph element to contain the title and subtitle
-	const titleContainer = document.createElement('p');
-
-	// Set the inner HTML of the title container with an <h2> for the main title and a <span> for the subtitle
-	titleContainer.innerHTML = `
-        <h2>${titleText}</h2>
-        <span class="subtitle">${subTitleText}</span>
-    `;
-
-	// Append the populated title container to the provided parent container
-	container.appendChild(titleContainer);
-}
-
 /**
  * Generates a unique identifier (UID) as a hexadecimal string.
  *
@@ -375,7 +306,7 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 	const container = document.createElement('span');
 
 	// Add a title to the container to indicate the configuration section.
-	newTitle(container, 'Automation Settings', 'Flow Configuration');
+	CustomFields.newTitle(container, 'Automation Settings', 'Flow Configuration');
 
 	// Add a string input field for configuring the "Invocation Interval".
 	CustomFields.newStringField(
@@ -410,7 +341,7 @@ function stepEditorProvider(step, editorContext, _definition) {
 	container.title = step.description; // Set tooltip text to the step's description.
 
 	// Add a title element to the container.
-	newTitle(container, step.name, step.pluginType);
+	CustomFields.newTitle(container, step.name, step.pluginType, step.description);
 
 	// Add a string input field for the plugin name.
 	// This field is always read-only.
@@ -460,6 +391,25 @@ function stepEditorProvider(step, editorContext, _definition) {
 		// Check if the parameter type is a list field or an options field.
 		const isListField = _cacheKeys.includes(parameter.type.toUpperCase());
 		const isOptionsField = parameter.optionsList && parameter.optionsList.length > 0;
+		const isArray = parameter.type.toUpperCase() === 'ARRAY';
+
+		// If the parameter is an array, create a new array field.
+		if (isArray) {
+			CustomFields.newArrayField(
+				container,
+				key,
+				parameter.description,
+				parameter.value,
+				(value) => {
+					// Update the property's value and notify the editor of the change.
+					parameter.value = value;
+					editorContext.notifyPropertiesChanged();
+				}
+			);
+
+			// Continue to the next parameter.
+			continue;
+		}
 
 		// If the parameter is a list field or an options field, create a dropdown.
 		if (isListField || isOptionsField) {
