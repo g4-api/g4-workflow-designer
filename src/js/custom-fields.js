@@ -239,7 +239,7 @@ class CustomFields {
             newInput.type = 'text';
             newInput.value = value || '';
             newInput.setAttribute('g4-role', 'valueitem');
-            newInput.setAttribute('title', title);
+            newInput.setAttribute('title', value);
 
             // Create the remove button. Clicking it removes the entire row from the container.
             const removeButton = document.createElement('button');
@@ -301,11 +301,11 @@ class CustomFields {
         // - A text input with a "+" button above it.
         // - A div (input-container) that will hold additional rows created by the "+" button.
         const html = `
-        <div class="text-with-button">
-            <button type="button">+</button>
-            <input type="text" g4-role="valueitem" title="${title}" />
-        </div>
-        <div id="${inputId}-input-container"></div>`;
+            <div class="text-with-button">
+                <button type="button">+</button>
+                <input type="text" g4-role="valueitem" title="${title}" />
+            </div>
+            <div id="${inputId}-input-container"></div>`;
 
         // Insert the initial HTML structure into the controller container.
         controllerContainer.insertAdjacentHTML('beforeend', html);
@@ -323,6 +323,7 @@ class CustomFields {
             // Set the first input's value to the first item in the initialValue array.
             const mainInput = controllerContainer.querySelector('[g4-role="valueitem"]');
             mainInput.value = values.shift();
+            mainInput.title = mainInput.value;
         }
 
         // For any remaining values, create additional input rows.
@@ -336,18 +337,21 @@ class CustomFields {
         container.addEventListener('input', () => callback(titleContainer));
     }
 
+    static newBooleanField(container, label, title, initialValue, setCallback) {
+    }
+
     /**
      * Creates a new dropdown (list field) UI element and appends it to the specified container.
      *
      * @param {HTMLElement}  container    - The parent container to which the field will be added.
-     * @param {string|Array} itemsSource  - A string representing the type of items to fetch from the cache,
-     *                                      or an array of options to populate the dropdown.
      * @param {string}       label        - The label for the dropdown field.
      * @param {string}       title        - The tooltip text that appears when hovering over the combo-box.
      * @param {string}       initialValue - The initial value to populate the input field with.
+     * @param {string|Array} itemsSource  - A string representing the type of items to fetch from the cache,
+     *                                      or an array of options to populate the dropdown.
      * @param {Function}     setCallback  - A callback function invoked when the user selects an option.
      */
-    static newListField(container, itemsSource, label, title, initialValue, setCallback) {
+    static newListField(container, label, title, initialValue, itemsSource, setCallback) {
         const getItems = (itemsSource) => {
             // Determine the items for the dropdown.
             let items;
@@ -390,9 +394,14 @@ class CustomFields {
         // Determine the items for the dropdown.
         const items = getItems(itemsSource);
 
+        // Set the initial value to an empty string if it is not defined or is NaN.
+        initialValue = !initialValue || initialValue === NaN || initialValue === 'undefined'
+            ? ''
+            : initialValue;
+
         // Start building the HTML structure for the dropdown field.
         let html = `
-        <select title="${title}">
+        <select title="${initialValue}">
             <option value="" disabled selected>-- Please select an option --</option>`;
 
         // Add options to the dropdown for each item.
@@ -418,7 +427,10 @@ class CustomFields {
         select.value = initialValue;
 
         // Attach an event listener to handle user input and invoke the callback with the selected value.
-        titleContainer.addEventListener('input', () => setCallback(select.value));
+        titleContainer.addEventListener('input', () => {
+            select.title = select.value;
+            setCallback(select.value);
+        });
 
         // Append the field container to the parent container.
         container.appendChild(titleContainer);
@@ -441,12 +453,17 @@ class CustomFields {
         // Convert the label from PascalCase to a space-separated format for display.
         const labelDisplayName = convertPascalToSpaceCase(label);
 
+        // Set the initial value to an empty string if it is not defined or is NaN.
+        initialValue = !initialValue || initialValue === NaN || initialValue === 'undefined'
+            ? ''
+            : initialValue;
+
         // Set the inner HTML of the field container to the input field HTML
         const html = `
 		<input
 			id='${inputId}'
 			data-g4-attribute='${label}'
-			title='${title}'
+			title='${initialValue}'
 			type='text'
 			spellcheck='false'
 			value='${initialValue}' />`;
@@ -469,7 +486,10 @@ class CustomFields {
         }
 
         // Add an event listener to handle input changes and invoke the callback with the new value
-        titleContainer.addEventListener('input', () => setCallback(input.value));
+        titleContainer.addEventListener('input', () => {
+            input.title = input.value;
+            setCallback(input.value);
+        });
 
         // Append the field container to the parent container.
         container.appendChild(titleContainer);
@@ -538,15 +558,20 @@ class CustomFields {
         // Convert the label from PascalCase to a space-separated format for display.
         const labelDisplayName = convertPascalToSpaceCase(label);
 
+        // Set the initial value to an empty string if it is not defined or is NaN.
+        initialValue = !initialValue || initialValue === NaN || initialValue === 'undefined'
+            ? ''
+            : initialValue;
+
         // Create the textarea element.
         const textareaElement = document.createElement('textarea');
-        textareaElement.setAttribute('id', inputId);              // Assign the unique ID.
-        textareaElement.setAttribute('rows', '1');                // Set the initial number of rows.
-        textareaElement.setAttribute('wrap', 'off');              // Disable text wrapping.
-        textareaElement.setAttribute('data-g4-attribute', label); // Custom data attribute for context.
-        textareaElement.setAttribute('spellcheck', 'false');      // Disable spellcheck.
-        textareaElement.setAttribute('title', title);             // Set the tooltip text.
-        textareaElement.value = initialValue;                     // Set the initial value.
+        textareaElement.setAttribute('id', inputId);               // Assign the unique ID.
+        textareaElement.setAttribute('rows', '1');                 // Set the initial number of rows.
+        textareaElement.setAttribute('wrap', 'off');               // Disable text wrapping.
+        textareaElement.setAttribute('data-g4-attribute', label);  // Custom data attribute for context.
+        textareaElement.setAttribute('spellcheck', 'false');       // Disable spellcheck.
+        textareaElement.setAttribute('title', initialValue);       // Set the tooltip text.
+        textareaElement.value = initialValue;                      // Set the initial value.
 
         // Create a new field container div with a label and icon.
         const titleContainer = newtitleContainer(inputId, labelDisplayName, title);
@@ -563,7 +588,10 @@ class CustomFields {
         }
 
         // Attach an event listener to handle input events for resizing and value changes.
-        titleContainer.addEventListener('input', () => callback(textareaElement));
+        titleContainer.addEventListener('input', () => {
+            textareaElement.title = textareaElement.value;
+            callback(textareaElement);
+        });
 
         // Append the field container to the parent container.
         container.appendChild(titleContainer);
