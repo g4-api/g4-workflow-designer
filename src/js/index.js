@@ -383,6 +383,43 @@ function stepEditorProvider(step, editorContext, _definition) {
 		const isListField = _cacheKeys.includes(parameter.type.toUpperCase());
 		const isOptionsField = parameter.optionsList && parameter.optionsList.length > 0;
 		const isArray = parameter.type.toUpperCase() === 'ARRAY';
+		const isSwitch = parameter.type.toUpperCase() === 'SWITCH' || parameter.type.toUpperCase() === 'BOOLEAN' || parameter.type.toUpperCase() === 'BOOL';
+		const isKeyValue = parameter.type.toUpperCase() === 'KEY/VALUE' || parameter.type.toUpperCase() === 'KEYVALUE' || parameter.type.toUpperCase() === 'DICTIONARY';
+
+		if(isKeyValue) {
+			CustomFields.newKeyValueField(
+				container,
+				key,
+				parameter.description,
+				parameter.value,
+				(value) => {
+					// Update the property's value and notify the editor of the change.
+					parameter.value = value;
+					editorContext.notifyPropertiesChanged();
+				}
+			);
+
+			// Continue to the next parameter.
+			continue;
+		}
+
+		// If the parameter is a switch, create a new switch field.
+		if(isSwitch) {
+			CustomFields.newSwitchField(
+				container,
+				key,
+				parameter.description,
+				parameter.value,
+				(value) => {
+					// Update the property's value and notify the editor of the change.
+					parameter.value = value;
+					editorContext.notifyPropertiesChanged();
+				}
+			);
+
+			// Continue to the next parameter.
+			continue;
+		}
 
 		// If the parameter is an array, create a new array field.
 		if (isArray) {
@@ -405,7 +442,7 @@ function stepEditorProvider(step, editorContext, _definition) {
 		// If the parameter is a list field or an options field, create a dropdown.
 		if (isListField || isOptionsField) {
 			const itemsSource = isListField ? parameter.type : parameter.optionsList;
-			CustomFields.newListField(
+			CustomFields.newDataListField(
 				container,
 				key,
 				parameter.description,

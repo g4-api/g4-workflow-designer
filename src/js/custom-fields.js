@@ -9,10 +9,10 @@
  * @example
  * // Create a new field container and append it to a form
  * const form = document.getElementById('userForm');
- * const field = newtitleContainer('username', 'Username');
+ * const field = newFieldContainer('username', 'Username');
  * form.appendChild(field);
  */
-const newtitleContainer = (id, labelDisplayName, hintText) => {
+const newFieldContainer = (id, labelDisplayName, hintText) => {
     /**
      * Toggles a hint text element inside a specified container.
      * If the hint text element already exists, it is removed. Otherwise, a new one is created and added.
@@ -232,7 +232,7 @@ class CustomFields {
         function newInput(container, value) {
             // Create a wrapper div to hold the input and remove button as a single row.
             const row = document.createElement('div');
-            row.className = 'input-row'; // Assign a class for styling via CSS.
+            row.className = 'text-with-button input-row';
 
             // Create the text input element with optional initial value.
             const newInput = document.createElement('input');
@@ -258,8 +258,8 @@ class CustomFields {
             };
 
             // Add the input field and remove button into the newly created row.
-            row.appendChild(newInput);
             row.appendChild(removeButton);
+            row.appendChild(newInput);
 
             // Append the completed row to the specified container.
             container.appendChild(row);
@@ -279,23 +279,31 @@ class CustomFields {
             // Find all input elements with the g4-role="valueitem" attribute.
             const inputs = container.querySelectorAll('input[g4-role="valueitem"]');
 
+            // Convert the NodeList of inputs to an array for easier processing.
+            const inputArray = Array.from(inputs);
+
             // Extract values from these inputs and filter out null, undefined, or empty strings.
-            const values = Array.from(inputs).map(input => input.value).filter(item => {
-                return item != null && item.trim() !== '';
-            });
+            const values = inputArray.map(input => {
+                input.title = input.value;
+                return input.value;
+            }).filter(item => item != null && item.trim() !== '');
 
             // Pass the filtered values array to the setCallback function for further handling.
             setCallback(values);
         }
 
+        // If initial values are provided, populate the first input and create subsequent inputs.
+        const values = initialValue || [];
+        const mainInputValue = values.length > 0 ? values.shift() : '';
+
         // Convert the label from PascalCase to spaced words (e.g., "MyLabel" -> "My Label").
         const labelDisplayName = convertPascalToSpaceCase(label);
 
         // Create a new field container that includes a label, title, and optionally an icon.
-        const titleContainer = newtitleContainer(inputId, labelDisplayName, title);
+        const fieldContainer = newFieldContainer(inputId, labelDisplayName, title);
 
         // Within the field container, find the controller container that holds the main input and others.
-        const controllerContainer = titleContainer.querySelector('[g4-role="controller"]');
+        const controllerContainer = fieldContainer.querySelector('[g4-role="controller"]');
 
         // Set up the initial HTML structure:
         // - A text input with a "+" button above it.
@@ -303,7 +311,7 @@ class CustomFields {
         const html = `
             <div class="text-with-button">
                 <button type="button">+</button>
-                <input type="text" g4-role="valueitem" title="${title}" />
+                <input type="text" g4-role="valueitem" title="${mainInputValue}" value="${mainInputValue}" />
             </div>
             <div id="${inputId}-input-container"></div>`;
 
@@ -315,29 +323,308 @@ class CustomFields {
         botton.addEventListener('click', newInputCallback);
 
         // Append the newly created field container (with controller) to the main container.
-        container.appendChild(titleContainer);
-
-        // If initial values are provided, populate the first input and create subsequent inputs.
-        const values = initialValue || [];
-        if (values.length > 0) {
-            // Set the first input's value to the first item in the initialValue array.
-            const mainInput = controllerContainer.querySelector('[g4-role="valueitem"]');
-            mainInput.value = values.shift();
-            mainInput.title = mainInput.value;
-        }
+        container.appendChild(fieldContainer);
 
         // For any remaining values, create additional input rows.
-        const inputContainer = titleContainer.querySelector(`#${escapedId}-input-container`);
+        const inputContainer = fieldContainer.querySelector(`#${escapedId}-input-container`);
         for (let index = 0; index < values.length; index++) {
             const value = values[index];
             newInput(inputContainer, value);
         }
 
         // Add an event listener to the main container to call callback whenever input changes occur.
-        container.addEventListener('input', () => callback(titleContainer));
+        container.addEventListener('input', () => callback(fieldContainer));
     }
 
-    static newBooleanField(container, label, title, initialValue, setCallback) {
+    /**
+     * Creates a new dropdown (list field) UI element and appends it to the specified container.
+     *
+     * @param {HTMLElement}  container    - The parent container to which the field will be added.
+     * @param {string}       label        - The label for the dropdown field.
+     * @param {string}       title        - The tooltip text that appears when hovering over the combo-box.
+     * @param {string}       initialValue - The initial value to populate the input field with.
+     * @param {string|Array} itemsSource  - A string representing the type of items to fetch from the cache,
+     *                                      or an array of options to populate the dropdown.
+     * @param {Function}     setCallback  - A callback function invoked when the user selects an option.
+     */
+    static newDataListField(container, label, title, initialValue, itemsSource, setCallback) {
+        const getItems = (itemsSource) => {
+            // Determine the items for the dropdown.
+            let items;
+            if (typeof itemsSource === 'string') {
+                // Retrieve items from the cache if the source is a string (itemsType).
+                items = (itemsSource in _cache) ? _cache[itemsSource] : {};
+                items = Object.keys(items).reduce((obj, key) => {
+                    const item = items[key];
+                    const manifestKey = item?.manifest?.key || 'No key available';
+                    obj[manifestKey] = { manifest: { summary: item?.manifest?.summary || ['No summary available'] } };
+                    return obj;
+                }, {});
+            } else if (Array.isArray(itemsSource)) {
+                // Use the provided array as the list of items.
+                items = itemsSource.reduce((obj, item) => {
+                    const key = item.name || 'No name available';
+                    obj[key] = { manifest: { summary: item.description } };
+                    return obj;
+                }, {});
+            } else {
+                throw new Error('Invalid itemsSource type. Must be a string or an array.');
+            }
+
+            // Sort the items alphabetically by key.
+            items = Object.keys(items).sort().reduce((obj, key) => {
+                obj[key] = items[key];
+                return obj;
+            }, {});
+
+            // Return the sorted items.
+            return items;
+        }
+
+        // Generate a unique ID for the textarea element.
+        const inputId = newUid();
+
+        // Convert the label from PascalCase to a space-separated format for display.
+        const labelDisplayName = convertPascalToSpaceCase(label);
+
+        // Determine the items for the dropdown.
+        const items = getItems(itemsSource);
+
+        // Set the initial value to an empty string if it is not defined or is NaN.
+        initialValue = !initialValue || initialValue === NaN || initialValue === 'undefined'
+            ? ''
+            : initialValue;
+
+        // Start building the HTML structure for the dropdown field.
+        let html = `
+        <input list="${inputId}-datalist" title="${initialValue === '' ? 'Please select an option' : initialValue}" />
+        <datalist id="${inputId}-datalist">
+            <option value="" disabled selected>-- Please select an option --</option>`;
+
+        // Add options to the dropdown for each item.
+        Object.keys(items).forEach(key => {
+            const summary = items[key].manifest?.summary || ['No summary available'];
+            const hint = summary.join("\n");
+            html += `  <option value="${key}" label="${hint}">${convertPascalToSpaceCase(key)}</option>\n`;
+        });
+
+        // Close the select element in the HTML.
+        html += '</datalist>';
+
+        // Create a new field container div with a label and icon.
+        const fieldContainer = newFieldContainer(inputId, labelDisplayName, title);
+
+        // Select the controller container within the field container.
+        const controllerContainer = fieldContainer.querySelector('[g4-role="controller"]');
+
+        // Set the inner HTML of the field container to the constructed dropdown.
+        controllerContainer.insertAdjacentHTML('beforeend', html);
+
+        // Get a reference to the `select` element within the field container.
+        const input = controllerContainer.querySelector('input ');
+        input.value = initialValue;
+
+        // Attach an event listener to handle user input and invoke the callback with the selected value.
+        fieldContainer.addEventListener('input', () => {
+            input.title = input.value;
+            setCallback(input.value);
+        });
+
+        // Append the field container to the parent container.
+        container.appendChild(fieldContainer);
+    }
+
+    /**
+     * Creates a new key-value field in the provided container.
+     * 
+     * This field allows the user to input pairs of keys and values, add new pairs, or remove existing pairs.
+     * The resulting set of key-value pairs is sent to a callback function whenever changes occur.
+     *
+     * @param {HTMLElement} container    - The DOM element where the new key-value field will be appended.
+     * @param {string}      label        - A label for the field, usually provided in PascalCase (e.g., "MyLabel").
+     * @param {string}      title        - A title (tooltip) for the field container.
+     * @param {Object}      initialValue - An object containing initial key-value pairs.
+     * @param {Function}    setCallback  - A callback function that will be called with the updated dictionary of key-value pairs.
+     */
+    static newKeyValueField(container, label, title, initialValue, setCallback) {
+        // Generate a unique ID to associate with this field's elements.
+        const inputId = newUid();
+
+        // Escape the ID for safe use in CSS selectors.
+        const escapedId = CSS.escape(inputId);
+
+        /**
+         * Adds a new input row for a key-value pair when the "+" button is clicked.
+         * Finds the container that holds multiple input rows and appends a new one.
+         * 
+         * @returns {HTMLDivElement|undefined} The newly created row element, or undefined if the container is not found.
+         */
+        function newInputCallback() {
+            // Locate the container that will hold new input rows, identified by the escaped ID.
+            const container = document.querySelector(`#${escapedId}-controller > #${escapedId}-input-container`);
+
+            // If the container is not found, return without doing anything.
+            if (!container) {
+                return;
+            }
+
+            // Create a new input row with no initial key/value.
+            return newInput(container, undefined, undefined);
+        }
+
+        /**
+         * Creates a new input row with fields for a key and a value, and a remove button.
+         * Each row:
+         * - Has a "key" input field.
+         * - Has a "value" input field.
+         * - Has a remove button to delete the row.
+         *
+         * @param {HTMLElement} container - The container to which the new input row will be added.
+         * @param {string} [key]          - Optional initial value for the key input field.
+         * @param {string} [value]        - Optional initial value for the value input field.
+         * @returns {HTMLDivElement} The created row element containing the key and value inputs.
+         */
+        function newInput(container, key, value) {
+            // Create a row div for holding the key input, value input, and remove button together.
+            const row = document.createElement('div');
+            row.className = 'text-with-button input-row';
+            row.setAttribute('g4-role', 'keyvalue');
+
+            // Create the key input and set its initial value and attributes.
+            const newKeyInput = document.createElement('input');
+            newKeyInput.type = 'text';
+            newKeyInput.value = key || '';
+            newKeyInput.setAttribute('g4-role', 'key');
+            newKeyInput.setAttribute('title', `Key: ${key || ''}`);
+
+            // Create the value input and set its initial value and attributes.
+            const newValueInput = document.createElement('input');
+            newValueInput.type = 'text';
+            newValueInput.value = value || '';
+            newValueInput.setAttribute('g4-role', 'value');
+            newValueInput.setAttribute('title', `Value: ${value || ''}`);
+
+            // Create the remove button. Clicking it removes the entire row.
+            const removeButton = document.createElement('button');
+            removeButton.type = 'button';
+            removeButton.textContent = '-';
+            removeButton.title = "Remove Key/Value Pair";
+            removeButton.onclick = function () {
+                // Remove this row from the container when clicked.
+                container.removeChild(row);
+
+                // Find the closest [g4-role="field"] container, then locate the controller within it.
+                const fieldContainer = container.closest('[g4-role="field"]');
+                if (fieldContainer) {
+                    const titleContainer = fieldContainer.querySelector('[g4-role="controller"]');
+
+                    // After removing a row, update the values via the callback.
+                    callback(titleContainer);
+                }
+            };
+
+            // Append the remove button, key input, and value input into the row.
+            // Note: The order is remove button first, then key, then value, but can be adjusted as needed.
+            row.appendChild(removeButton);
+            row.appendChild(newKeyInput);
+            row.appendChild(newValueInput);
+
+            // Add the completed row to the container.
+            container.appendChild(row);
+
+            // Return the row element in case further processing is needed by the caller.
+            return row;
+        }
+
+        /**
+         * Collects all key-value pairs from rows marked with [g4-role="keyvalue"].
+         * 
+         * Process:
+         * 1. Find all elements with [g4-role="keyvalue"] inside the container.
+         * 2. Extract the key and value from each row.
+         * 3. If the key is non-empty, add the key-value pair to a resulting dictionary.
+         * 4. Update the title attributes for each input to reflect the current values.
+         * 5. Pass the final dictionary of pairs to setCallback().
+         *
+         * @param {HTMLElement} container - The DOM element that contains the key-value input elements.
+         */
+        function callback(container) {
+            // Find all row elements with [g4-role="keyvalue"].
+            const inputs = container.querySelectorAll('div[g4-role="keyvalue"]');
+            const inputArray = Array.from(inputs);
+
+            // Build a dictionary of key-value pairs from the input rows.
+            const values = inputArray.reduce((dictionary, input) => {
+                const keyInput = input.querySelector('input[g4-role="key"]');
+                const valueInput = input.querySelector('input[g4-role="value"]');
+
+                // Extract and trim the key and value. If missing, default to an empty string.
+                const key = keyInput ? keyInput.value.trim() : '';
+                const val = valueInput ? valueInput.value.trim() : '';
+
+                // Only add the pair if the key is not empty.
+                if (key !== '') {
+                    dictionary[key] = val;
+                }
+
+                // Update the title attributes for better tooltip/context information.
+                if (keyInput) keyInput.title = key;
+                if (valueInput) valueInput.title = val;
+
+                return dictionary;
+            }, {});
+
+            // Pass the dictionary to the setCallback function.
+            setCallback(values);
+        }
+
+        // If initialValue is provided, populate the first input and create subsequent inputs.
+        const values = initialValue || {};
+        const keys = Object.keys(values);
+
+        // The main field will get the first key-value pair (if any).
+        const mainInputKey = keys.length > 0 ? keys.shift() : '';
+        const mainKey = mainInputKey || '';
+        const mainValue = mainInputKey ? values[mainInputKey] : '';
+
+        // Convert the label from PascalCase to spaced words for readability.
+        const labelDisplayName = convertPascalToSpaceCase(label);
+
+        // Create a new field container with a label, title, and optionally an icon.
+        const fieldContainer = newFieldContainer(inputId, labelDisplayName, title);
+
+        // Find the controller container, where the main input and additional rows will be added.
+        const controllerContainer = fieldContainer.querySelector('[g4-role="controller"]');
+
+        // Set up the initial HTML structure with a "keyvalue" row and a container for extra rows.
+        const html = `
+        <div g4-role="keyvalue" class="text-with-button">
+            <button type="button" title="Add Key/Value Pair">+</button>
+            <input type="text" g4-role="key" title="Key: ${mainKey}" value="${mainKey}" />
+            <input type="text" g4-role="value" title="Value: ${mainValue}" value="${mainValue}" />
+        </div>
+        <div id="${inputId}-input-container"></div>`;
+
+        // Insert the initial row and container into the controller.
+        controllerContainer.insertAdjacentHTML('beforeend', html);
+
+        // Attach the event handler for the "+" button.
+        const addButton = controllerContainer.querySelector('button');
+        addButton.addEventListener('click', newInputCallback);
+
+        // Add the entire field container to the main container.
+        container.appendChild(fieldContainer);
+
+        // For any remaining keys, create additional input rows.
+        const inputContainer = fieldContainer.querySelector(`#${escapedId}-input-container`);
+        for (let i = 0; i < keys.length; i++) {
+            const key = keys[i];
+            const value = values[key];
+            newInput(inputContainer, key, value);
+        }
+
+        // Listen for changes and update values whenever the user types in any input field.
+        container.addEventListener('input', () => callback(fieldContainer));
     }
 
     /**
@@ -401,7 +688,7 @@ class CustomFields {
 
         // Start building the HTML structure for the dropdown field.
         let html = `
-        <select title="${initialValue}">
+        <select title="${initialValue === '' ? 'Please select an option' : initialValue}">
             <option value="" disabled selected>-- Please select an option --</option>`;
 
         // Add options to the dropdown for each item.
@@ -414,10 +701,10 @@ class CustomFields {
         html += '</select>';
 
         // Create a new field container div with a label and icon.
-        const titleContainer = newtitleContainer(inputId, labelDisplayName, title);
+        const fieldContainer = newFieldContainer(inputId, labelDisplayName, title);
 
         // Select the controller container within the field container.
-        const controllerContainer = titleContainer.querySelector('[g4-role="controller"]');
+        const controllerContainer = fieldContainer.querySelector('[g4-role="controller"]');
 
         // Set the inner HTML of the field container to the constructed dropdown.
         controllerContainer.insertAdjacentHTML('beforeend', html);
@@ -427,13 +714,13 @@ class CustomFields {
         select.value = initialValue;
 
         // Attach an event listener to handle user input and invoke the callback with the selected value.
-        titleContainer.addEventListener('input', () => {
+        fieldContainer.addEventListener('input', () => {
             select.title = select.value;
             setCallback(select.value);
         });
 
         // Append the field container to the parent container.
-        container.appendChild(titleContainer);
+        container.appendChild(fieldContainer);
     }
 
     /**
@@ -469,10 +756,10 @@ class CustomFields {
 			value='${initialValue}' />`;
 
         // Create a new field container div with a label and icon.
-        const titleContainer = newtitleContainer(inputId, labelDisplayName, title);
+        const fieldContainer = newFieldContainer(inputId, labelDisplayName, title);
 
         // Select the controller container within the field container.
-        const controllerContainer = titleContainer.querySelector('[g4-role="controller"]');
+        const controllerContainer = fieldContainer.querySelector('[g4-role="controller"]');
 
         // Set the inner HTML of the field container to the constructed input controller.
         controllerContainer.insertAdjacentHTML('beforeend', html);
@@ -486,13 +773,13 @@ class CustomFields {
         }
 
         // Add an event listener to handle input changes and invoke the callback with the new value
-        titleContainer.addEventListener('input', () => {
+        fieldContainer.addEventListener('input', () => {
             input.title = input.value;
             setCallback(input.value);
         });
 
         // Append the field container to the parent container.
-        container.appendChild(titleContainer);
+        container.appendChild(fieldContainer);
     }
 
     /**
@@ -574,10 +861,10 @@ class CustomFields {
         textareaElement.value = initialValue;                      // Set the initial value.
 
         // Create a new field container div with a label and icon.
-        const titleContainer = newtitleContainer(inputId, labelDisplayName, title);
+        const fieldContainer = newFieldContainer(inputId, labelDisplayName, title);
 
         // Select the controller container within the field container.
-        const controllerContainer = titleContainer.querySelector('[g4-role="controller"]');
+        const controllerContainer = fieldContainer.querySelector('[g4-role="controller"]');
 
         // Append the textarea to the container div.
         controllerContainer.appendChild(textareaElement);
@@ -588,13 +875,65 @@ class CustomFields {
         }
 
         // Attach an event listener to handle input events for resizing and value changes.
-        titleContainer.addEventListener('input', () => {
+        fieldContainer.addEventListener('input', () => {
             textareaElement.title = textareaElement.value;
             callback(textareaElement);
         });
 
         // Append the field container to the parent container.
-        container.appendChild(titleContainer);
+        container.appendChild(fieldContainer);
+    }
+
+    /**
+     * Creates a new switch field (dropdown) for selecting between "True" and "False" options.
+     *
+     * @param {HTMLElement} container    - The parent container to which the switch field will be added.
+     * @param {string}      label        - The label for the switch field, displayed above the dropdown.
+     * @param {string}      title        - The tooltip text for the switch field.
+     * @param {boolean}     initialValue - The initial value of the switch (true/false).
+     * @param {Function}    setCallback  - A callback function invoked whenever the value changes.
+     */
+    static newSwitchField(container, label, title, initialValue, setCallback) {
+        // Generate a unique ID for the dropdown field.
+        const inputId = newUid();
+
+        // Convert the label from PascalCase to a human-readable space-separated format.
+        const labelDisplayName = convertPascalToSpaceCase(label);
+
+        // Ensure the initial value is a valid boolean or set it to `false` by default.
+        initialValue = !initialValue || initialValue === NaN || initialValue === undefined
+            ? false
+            : initialValue;
+
+        // Build the HTML structure for the dropdown field.
+        let html = `
+        <select title="${initialValue}">
+            <option value="" disabled selected>-- Please select an option --</option>
+            <option value="true" title="Activate switch">True</option>
+            <option value="false" title="Deactivate switch">False</option>
+        </select>`;
+
+        // Create a new container for the field, including a label and an optional title icon.
+        const fieldContainer = newFieldContainer(inputId, labelDisplayName, title);
+
+        // Find the controller container where the dropdown will be inserted.
+        const controllerContainer = fieldContainer.querySelector('[g4-role="controller"]');
+
+        // Add the dropdown HTML to the controller container.
+        controllerContainer.insertAdjacentHTML('beforeend', html);
+
+        // Select the dropdown element within the container.
+        const select = controllerContainer.querySelector('select');
+        select.value = initialValue;
+
+        // Attach an event listener to handle value changes.
+        fieldContainer.addEventListener('input', () => {
+            select.title = select.value;
+            setCallback(select.value);
+        });
+
+        // Append the fully constructed title container to the parent container.
+        container.appendChild(fieldContainer);
     }
 
     /**

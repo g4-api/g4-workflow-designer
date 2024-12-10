@@ -53,6 +53,7 @@
 		}
 
 		.sqd-editor input[type='text'],
+		input[list],
 		select,
 		textarea {
 			width: 100%;
@@ -77,6 +78,7 @@
 		}
 
 		.sqd-editor input[type='text']:focus,
+		input[list]:focus,
 		select:focus,
 		textarea:focus {
 			border: 1px solid #000;
@@ -207,11 +209,6 @@
 			margin: 0.2em 0;
 		}
 
-		.input-row input[type="text"] {
-			flex: 1;
-			margin-right: 0.2em;
-		}
-
 		.add-button {
 			position: absolute;
 			top: 0;
@@ -229,8 +226,6 @@
 			align-items: center;
 			justify-content: space-between;
 		}
-
-		.input-row button,
 		.text-with-button button {
 			box-sizing: border-box;
 			border: 1px solid silver;
