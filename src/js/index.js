@@ -332,7 +332,7 @@ function stepEditorProvider(step, editorContext, _definition) {
 	container.title = step.description; // Set tooltip text to the step's description.
 
 	// Add a title element to the container.
-	CustomFields.newTitle(container, step.name, step.pluginType, step.description);
+	CustomFields.newTitle(container, convertPascalToSpaceCase(step.pluginName), step.pluginType, step.description);
 
 	// Add a string input field for the plugin name.
 	// This field is always read-only.
@@ -376,7 +376,6 @@ function stepEditorProvider(step, editorContext, _definition) {
 				editorContext.notifyPropertiesChanged();
 			}
 		);
-		
 	}
 
 	// Iterate through the step's parameters and add corresponding input fields.
@@ -392,7 +391,7 @@ function stepEditorProvider(step, editorContext, _definition) {
 		const isSwitch = parameter.type.toUpperCase() === 'SWITCH' || parameter.type.toUpperCase() === 'BOOLEAN' || parameter.type.toUpperCase() === 'BOOL';
 		const isKeyValue = parameter.type.toUpperCase() === 'KEY/VALUE' || parameter.type.toUpperCase() === 'KEYVALUE' || parameter.type.toUpperCase() === 'DICTIONARY';
 
-		if(isKeyValue) {
+		if (isKeyValue) {
 			CustomFields.newKeyValueField(
 				container,
 				key,
@@ -410,7 +409,7 @@ function stepEditorProvider(step, editorContext, _definition) {
 		}
 
 		// If the parameter is a switch, create a new switch field.
-		if(isSwitch) {
+		if (isSwitch) {
 			CustomFields.newSwitchField(
 				container,
 				key,

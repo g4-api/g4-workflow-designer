@@ -322,9 +322,6 @@ class CustomFields {
         const botton = controllerContainer.querySelector('button');
         botton.addEventListener('click', newInputCallback);
 
-        // Append the newly created field container (with controller) to the main container.
-        container.appendChild(fieldContainer);
-
         // For any remaining values, create additional input rows.
         const inputContainer = fieldContainer.querySelector(`#${escapedId}-input-container`);
         for (let index = 0; index < values.length; index++) {
@@ -333,7 +330,10 @@ class CustomFields {
         }
 
         // Add an event listener to the main container to call callback whenever input changes occur.
-        container.addEventListener('input', () => callback(fieldContainer));
+        fieldContainer.addEventListener('input', () => callback(fieldContainer));
+
+        // Append the newly created field container (with controller) to the main container.
+        container.appendChild(fieldContainer);
     }
 
     /**
@@ -624,7 +624,7 @@ class CustomFields {
         }
 
         // Listen for changes and update values whenever the user types in any input field.
-        container.addEventListener('input', () => callback(fieldContainer));
+        fieldContainer.addEventListener('input', () => callback(fieldContainer));
     }
 
     /**
