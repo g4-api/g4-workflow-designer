@@ -327,6 +327,110 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
  * @returns {HTMLElement} The container element housing the editor fields for the step.
  */
 function stepEditorProvider(step, editorContext, _definition) {
+	function initializeField(key, step, type) {
+		let parameter = {}
+		if (type === 'properties') {
+			parameter = step.properties[key];
+		} else if (type === 'parameters') {
+			parameter = step.parameters[key];
+		}
+
+		// Check if the parameter type is a list field or an options field.
+		const isListField = _cacheKeys.includes(parameter.type.toUpperCase());
+		const isOptionsField = parameter.optionsList && parameter.optionsList.length > 0;
+		const isArray = parameter.type.toUpperCase() === 'ARRAY';
+		const isSwitch = parameter.type.toUpperCase() === 'SWITCH' || parameter.type.toUpperCase() === 'BOOLEAN' || parameter.type.toUpperCase() === 'BOOL';
+		const isKeyValue = parameter.type.toUpperCase() === 'KEY/VALUE' || parameter.type.toUpperCase() === 'KEYVALUE' || parameter.type.toUpperCase() === 'DICTIONARY';
+
+		if (isKeyValue) {
+			CustomFields.newKeyValueField(
+				container,
+				key,
+				parameter.description,
+				parameter.value,
+				(value) => {
+					// Update the property's value and notify the editor of the change.
+					parameter.value = value;
+					editorContext.notifyPropertiesChanged();
+				}
+			);
+
+			// Exit the function after creating the key/value field.
+			return;
+		}
+
+		// If the parameter is a switch, create a new switch field.
+		if (isSwitch) {
+			CustomFields.newSwitchField(
+				container,
+				key,
+				parameter.description,
+				parameter.value,
+				(value) => {
+					// Update the property's value and notify the editor of the change.
+					parameter.value = value;
+					editorContext.notifyPropertiesChanged();
+				}
+			);
+
+			// Exit the function after creating the switch field.
+			return;
+		}
+
+		// If the parameter is an array, create a new array field.
+		if (isArray) {
+			CustomFields.newArrayField(
+				container,
+				key,
+				parameter.description,
+				parameter.value,
+				(value) => {
+					// Update the property's value and notify the editor of the change.
+					parameter.value = value;
+					editorContext.notifyPropertiesChanged();
+				}
+			);
+
+			// Exit the function after creating the array field.
+			return;
+		}
+
+		// If the parameter is a list field or an options field, create a dropdown.
+		if (isListField || isOptionsField) {
+			const itemsSource = isListField ? parameter.type : parameter.optionsList;
+			CustomFields.newDataListField(
+				container,
+				key,
+				parameter.description,
+				parameter.value,
+				itemsSource,
+				(value) => {
+					// Update the property's value and notify the editor of the change.
+					parameter.value = value;
+					editorContext.notifyPropertiesChanged();
+				}
+			);
+
+			// Exit the function after creating the data list field.
+			return;
+		}
+
+		// Add a string input field for the parameter.
+		CustomFields.newStringField(
+			container,
+			step,
+			key,
+			parameter.description,
+			parameter.value,
+			false,
+			(value) => {
+				// Update the step's properties and notify the editor of the change.
+				parameter.value = value;
+				editorContext.notifyPropertiesChanged();
+			}
+		);
+	}
+
 	// Create the main container element for the editor.
 	const container = document.createElement('div');
 	container.title = step.description; // Set tooltip text to the step's description.
@@ -354,130 +458,14 @@ function stepEditorProvider(step, editorContext, _definition) {
 	const sortedProperties = Object.keys(step.properties).sort((a, b) => a.localeCompare(b));
 	for (let index = 0; index < sortedProperties.length; index++) {
 		const key = sortedProperties[index];
-		const property = step.properties[key];
-		const propertyName = property.name ? property.name.toUpperCase() : 'RULES';
-
-		// Skip 'ARGUMENT' properties if parameters exist for the step.
-		if (propertyName === 'RULES' || (propertyName === 'ARGUMENT' && step.parameters && Object.keys(step.parameters).length > 0)) {
-			continue;
-		}
-
-		// Add a string input field for the property.
-		CustomFields.newStringField(
-			container,
-			step,
-			key,
-			property.description,
-			property.value,
-			false,
-			(value) => {
-				// Update the step's properties and notify the editor of the change.
-				property.value = value;
-				editorContext.notifyPropertiesChanged();
-			}
-		);
+		initializeField(key, step, "properties");
 	}
 
 	// Iterate through the step's parameters and add corresponding input fields.
 	const sortedParameters = Object.keys(step.parameters).sort((a, b) => a.localeCompare(b));
 	for (let index = 0; index < sortedParameters.length; index++) {
 		const key = sortedParameters[index];
-		const parameter = step.parameters[key];
-
-		// Check if the parameter type is a list field or an options field.
-		const isListField = _cacheKeys.includes(parameter.type.toUpperCase());
-		const isOptionsField = parameter.optionsList && parameter.optionsList.length > 0;
-		const isArray = parameter.type.toUpperCase() === 'ARRAY';
-		const isSwitch = parameter.type.toUpperCase() === 'SWITCH' || parameter.type.toUpperCase() === 'BOOLEAN' || parameter.type.toUpperCase() === 'BOOL';
-		const isKeyValue = parameter.type.toUpperCase() === 'KEY/VALUE' || parameter.type.toUpperCase() === 'KEYVALUE' || parameter.type.toUpperCase() === 'DICTIONARY';
-
-		if (isKeyValue) {
-			CustomFields.newKeyValueField(
-				container,
-				key,
-				parameter.description,
-				parameter.value,
-				(value) => {
-					// Update the property's value and notify the editor of the change.
-					parameter.value = value;
-					editorContext.notifyPropertiesChanged();
-				}
-			);
-
-			// Continue to the next parameter.
-			continue;
-		}
-
-		// If the parameter is a switch, create a new switch field.
-		if (isSwitch) {
-			CustomFields.newSwitchField(
-				container,
-				key,
-				parameter.description,
-				parameter.value,
-				(value) => {
-					// Update the property's value and notify the editor of the change.
-					parameter.value = value;
-					editorContext.notifyPropertiesChanged();
-				}
-			);
-
-			// Continue to the next parameter.
-			continue;
-		}
-
-		// If the parameter is an array, create a new array field.
-		if (isArray) {
-			CustomFields.newArrayField(
-				container,
-				key,
-				parameter.description,
-				parameter.value,
-				(value) => {
-					// Update the property's value and notify the editor of the change.
-					parameter.value = value;
-					editorContext.notifyPropertiesChanged();
-				}
-			);
-
-			// Continue to the next parameter.
-			continue;
-		}
-
-		// If the parameter is a list field or an options field, create a dropdown.
-		if (isListField || isOptionsField) {
-			const itemsSource = isListField ? parameter.type : parameter.optionsList;
-			CustomFields.newDataListField(
-				container,
-				key,
-				parameter.description,
-				parameter.value,
-				itemsSource,
-				(value) => {
-					// Update the property's value and notify the editor of the change.
-					parameter.value = value;
-					editorContext.notifyPropertiesChanged();
-				}
-			);
-
-			// Continue to the next parameter.
-			continue;
-		}
-
-		// Add a string input field for the parameter.
-		CustomFields.newStringField(
-			container,
-			step,
-			key,
-			parameter.description,
-			parameter.value,
-			false,
-			(value) => {
-				// Update the step's properties and notify the editor of the change.
-				parameter.value = value;
-				editorContext.notifyPropertiesChanged();
-			}
-		);
+		initializeField(key, step, "parameters");
 	}
 
 	// Return the populated container element.
