@@ -12,7 +12,7 @@ let _manifests = {};
  * @returns {string} - The converted space-separated string.
  */
 function convertPascalToSpaceCase(str) {
-	return str.replace(/([A-Z])/g, ' $1').trim();
+	return str ? str.replace(/([A-Z])/g, ' $1').trim() : 'N/A';
 }
 
 function onRunClicked() {

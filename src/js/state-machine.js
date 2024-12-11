@@ -47,6 +47,15 @@ class StateMachine {
 		});
 	}
 
+	executeContainer(container){
+		//this.handler.initStage(stage, this.data);
+		this.callstack.push({
+			sequence: container.sequence,
+			index: 0,
+			unwind: this.unwindStack.bind(this)
+		});
+	}
+
 	executeLoopStep(step) {
 		this.handler.initLoopStep(step, this.data);
 
@@ -91,7 +100,10 @@ class StateMachine {
 			this.handler.beforeStepExecution(step, this.data);
 		}
 
-		switch (step.type) {
+		switch (step.componentType) {
+			case "container":
+				this.executeContainer(step);
+				break;
 			case 'if':
 				this.executeIfStep(step);
 				break;
@@ -143,7 +155,8 @@ class StateMachineSteps {
 			componentType: 'container', // Specify the component type as "container".
 			type,                       // The type of the container (e.g., stage, job).
 			name,                       // The name of the container.
-			properties,                 // Properties specific to the container.
+			parameters: {},             // Parameters specific to the container.
+			properties: {},             // Properties specific to the container.
 			sequence: steps || []       // The sequence of steps or sub-containers; defaults to an empty array.
 		};
 	}
@@ -170,7 +183,7 @@ class StateMachineSteps {
 			};
 
 			// TODO: Consider to remove this condition
-			if(bridgeObject.type.toUpperCase() === 'STRING' || bridgeObject.type.toUpperCase() === 'ANY') {
+			if (bridgeObject.type.toUpperCase() === 'STRING' || bridgeObject.type.toUpperCase() === 'ANY') {
 				bridgeObject.multiLine = false;
 			}
 
@@ -200,7 +213,7 @@ class StateMachineSteps {
 		const categories = manifest.categories ? manifest.categories.join("|").toUpperCase() : "";
 		let isCondition = categories.includes('CONDITION');
 		let isLoop = categories.includes('LOOP');
-		let isContainer = categories.includes('CONTAINER') || manifest.properties.some(item => item.name.toUpperCase() === "RULES");
+		let isContainer = !isCondition && !isLoop && (categories.includes('CONTAINER') || manifest.properties.some(item => item.name.toUpperCase() === "RULES"));
 
 		// Initialize the new G4 step object
 		let step = {
@@ -239,7 +252,7 @@ class StateMachineSteps {
 		step.name = step.name === "Actions Group" ? step.name : convertPascalToSpaceCase(manifest.key);
 		step.parameters = parameters;
 		step.pluginName = manifest.key;
-		step.aliases    = manifest.aliases || [];
+		step.aliases = manifest.aliases || [];
 		step.pluginType = manifest.pluginType;
 		step.properties = properties;
 
