@@ -733,9 +733,15 @@ class CustomFields {
      * @param {boolean}     isReadonly   - If true, the input field is set to read-only mode.
      * @param {Function}    setCallback  - A callback function invoked whenever the input's value changes.
      */
-    static newNameField(container, label, title, initialValue, isReadonly, setCallback) {
+    static newNameField(container, label, title, initialValue, step, isReadonly, setCallback) {
         // Generate a unique ID for the textarea element.
         const inputId = newUid();
+
+        // Cache the aliases for the current step.
+        const aliases = step.aliases;
+
+        // Convert the plugin name from PascalCase to a space-separated format for display.
+        const pluginName = convertPascalToSpaceCase(step.pluginName);
 
         // Convert the label from PascalCase to a space-separated format for display.
         const labelDisplayName = convertPascalToSpaceCase(label);
@@ -745,15 +751,30 @@ class CustomFields {
             ? ''
             : initialValue;
 
-        // Set the inner HTML of the field container to the input field HTML
-        const html = `
-		<input
-			id='${inputId}'
-			data-g4-attribute='${label}'
-			title='${initialValue}'
-			type='text'
-			spellcheck='false'
-			value='${initialValue}' />`;
+        // Start building the HTML structure for the dropdown field.
+        let html = `
+        <input 
+            list="${inputId}-aliases" 
+            data-g4-attribute="${label}" 
+            title="${initialValue === '' ? 'Please select a different alias' : initialValue}" 
+            type="text" 
+            spellcheck='false'
+            value='${initialValue}' />`;
+
+        if (aliases && aliases.length > 0) {
+            html += `
+            <datalist id="${inputId}-aliases">
+                <option value="${pluginName}" label="${step.pluginName}">${pluginName}</option>\n`;
+
+            // Add options to the dropdown for each item.
+            aliases.forEach(alias => {
+                const formattedAlias = convertPascalToSpaceCase(alias);
+                html += `  <option value="${formattedAlias}" label="${alias}">${convertPascalToSpaceCase(formattedAlias)}</option>\n`;
+            });
+
+            // Close the select element in the HTML.
+            html += '</datalist>';
+        }
 
         // Create a new field container div with a label and icon.
         const fieldContainer = newFieldContainer(inputId, labelDisplayName, title);

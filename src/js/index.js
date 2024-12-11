@@ -341,6 +341,7 @@ function stepEditorProvider(step, editorContext, _definition) {
 		'Display Name',
 		'A User-Friendly, Descriptive Label for This Input (Displayed in the Flow Designer)',
 		step.name,
+		step,
 		false,
 		(value) => {
 			// Update the step's name and notify the editor of the change.
@@ -350,7 +351,9 @@ function stepEditorProvider(step, editorContext, _definition) {
 	);
 
 	// Iterate through the step's properties and add corresponding input fields.
-	for (const key in step.properties) {
+	const sortedProperties = Object.keys(step.properties).sort((a, b) => a.localeCompare(b));
+	for (let index = 0; index < sortedProperties.length; index++) {
+		const key = sortedProperties[index];
 		const property = step.properties[key];
 		const propertyName = property.name ? property.name.toUpperCase() : 'RULES';
 
@@ -373,10 +376,13 @@ function stepEditorProvider(step, editorContext, _definition) {
 				editorContext.notifyPropertiesChanged();
 			}
 		);
+		
 	}
 
 	// Iterate through the step's parameters and add corresponding input fields.
-	for (const key in step.parameters) {
+	const sortedParameters = Object.keys(step.parameters).sort((a, b) => a.localeCompare(b));
+	for (let index = 0; index < sortedParameters.length; index++) {
+		const key = sortedParameters[index];
 		const parameter = step.parameters[key];
 
 		// Check if the parameter type is a list field or an options field.

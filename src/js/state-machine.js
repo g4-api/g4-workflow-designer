@@ -131,10 +131,10 @@ class StateMachineSteps {
 	/**
 	 * Creates a new G4 container object for use in a workflow.
 	 *
-	 * @param {string} name - The name of the container.
-	 * @param {string} type - The type of the container (e.g., "stage", "job").
+	 * @param {string} name       - The name of the container.
+	 * @param {string} type       - The type of the container (e.g., "stage", "job").
 	 * @param {Object} properties - An object containing properties for the container.
-	 * @param {Array} steps - An array of steps or sub-containers to include in the container's sequence.
+	 * @param {Array}  steps      - An array of steps or sub-containers to include in the container's sequence.
 	 * @returns {Object} A new container object with a unique ID and specified properties.
 	 */
 	static newG4Container(name, type, properties, steps) {
@@ -200,7 +200,7 @@ class StateMachineSteps {
 		const categories = manifest.categories ? manifest.categories.join("|").toUpperCase() : "";
 		let isCondition = categories.includes('CONDITION');
 		let isLoop = categories.includes('LOOP');
-		let isContainer = categories.includes('CONTAINER');
+		let isContainer = categories.includes('CONTAINER') || manifest.properties.some(item => item.name.toUpperCase() === "RULES");
 
 		// Initialize the new G4 step object
 		let step = {
@@ -239,6 +239,7 @@ class StateMachineSteps {
 		step.name = step.name === "Actions Group" ? step.name : convertPascalToSpaceCase(manifest.key);
 		step.parameters = parameters;
 		step.pluginName = manifest.key;
+		step.aliases    = manifest.aliases || [];
 		step.pluginType = manifest.pluginType;
 		step.properties = properties;
 
