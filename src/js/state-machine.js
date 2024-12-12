@@ -104,7 +104,7 @@ class StateMachine {
 			case "container":
 				this.executeContainer(step);
 				break;
-			case 'if':
+			case 'switch':
 				this.executeIfStep(step);
 				break;
 			case 'loop':
