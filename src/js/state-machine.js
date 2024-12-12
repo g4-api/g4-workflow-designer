@@ -47,7 +47,7 @@ class StateMachine {
 		});
 	}
 
-	executeContainer(container){
+	executeContainer(container) {
 		//this.handler.initStage(stage, this.data);
 		this.callstack.push({
 			sequence: container.sequence,
@@ -141,23 +141,88 @@ class StateMachine {
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 class StateMachineSteps {
 	/**
+	 * Creates a new Stage container for the G4 Automation Sequence.
+	 * 
+	 * A Stage is a container that holds Jobs, each comprising specific Actions, to structure and manage the sequential automation flow.
+	 * Stages organize tasks into logical groups, enabling efficient execution, resource allocation, monitoring, and error handling within the automation sequence.
+	 *
+	 * @param {string} name       - The name of the Stage container.
+	 * @param {Object} properties - The properties defining the Stage container.
+	 * @param {Object} parameters - The parameters associated with the Stage.
+	 * @param {Array}  steps      - The steps or actions that belong to the Stage.
+	 * @returns {Object} A new Stage container object created by the newG4Container function.
+	 */
+	static newG4Stage(name, properties, parameters, steps) {
+		// Description of the Stage container, detailing its purpose and functionalities within the G4 Automation Sequence.
+		const stageDescription = `
+        A container that holds jobs, each comprising specific actions, to structure and manage the sequential automation flow.
+        Stages organize tasks into logical groups, enabling efficient execution, resource allocation, monitoring, and error handling within the automation sequence.
+    `;
+
+		// Initialize the Stage container using the newG4Container function.
+		let container = StateMachineSteps.newG4Container(name, 'stage', stageDescription, properties, parameters, steps);
+		container["pluginType"] = 'Container'
+		container["pluginName"] = 'G4™ Stage'
+
+		// Return the Stage container.
+		return container;
+	}
+
+	/**
+	 * Creates a new Job container within a Stage for the G4 Automation Sequence.
+	 *
+	 * A Job is a container that holds Actions, organizing and executing them as part of a Job within a Stage.
+	 * Job containers manage specific tasks, handle dependencies between actions, coordinate execution,
+	 * and ensure efficient resource utilization and error handling within the automation sequence.
+	 * By encapsulating related actions, Job containers facilitate modularity, scalability, and maintainability,
+	 * allowing complex automation workflows to be broken down into manageable and reusable components.
+	 *
+	 * @param {string} name       - The name of the Job container.
+	 * @param {Object} properties - The properties defining the Job container.
+	 * @param {Object} parameters - The parameters associated with the Job.
+	 * @param {Array}  steps      - The steps or actions that belong to the Job.
+	 * @returns {Object} A new Job container object created by the newG4Container function.
+	 */
+	static newG4Job(name, properties, parameters, steps) {
+		// Description of the Job container, detailing its purpose and functionalities within the G4 Automation Sequence.
+		const jobDescription = `
+        A container that holds actions, organizing and executing them as part of a job within a stage.
+        Job containers manage specific tasks, handle dependencies between actions, coordinate execution,
+        and ensure efficient resource utilization and error handling within the automation sequence.
+        By encapsulating related actions, job containers facilitate modularity, scalability, and maintainability,
+        allowing complex automation workflows to be broken down into manageable and reusable components.
+    `;
+
+		// Initialize the Job container using the newG4Container function.
+		let container = StateMachineSteps.newG4Container(name, 'job', jobDescription, properties, parameters, steps);
+		container["pluginType"] = 'Container'
+		container["pluginName"] = 'G4™ Job'
+
+		// Return the Job container.
+		return container;
+	}
+
+	/**
 	 * Creates a new G4 container object for use in a workflow.
 	 *
-	 * @param {string} name       - The name of the container.
-	 * @param {string} type       - The type of the container (e.g., "stage", "job").
-	 * @param {Object} properties - An object containing properties for the container.
-	 * @param {Array}  steps      - An array of steps or sub-containers to include in the container's sequence.
+	 * @param {string} name        - The name of the container.
+	 * @param {string} type        - The type of the container (e.g., "stage", "job").
+	 * @param {string} description - A brief description of the container.
+	 * @param {Object} properties  - An object containing properties for the container.
+	 * @param {Object} parameters  - An object containing parameters for the container.
+	 * @param {Array}  steps       - An array of steps or sub-containers to include in the container's sequence.
 	 * @returns {Object} A new container object with a unique ID and specified properties.
 	 */
-	static newG4Container(name, type, properties, steps) {
+	static newG4Container(name, type, description, properties, parameters, steps) {
 		return {
-			id: uid(),                  // Generate a unique identifier for the container.
-			componentType: 'container', // Specify the component type as "container".
-			type,                       // The type of the container (e.g., stage, job).
-			name,                       // The name of the container.
-			parameters: {},             // Parameters specific to the container.
-			properties: {},             // Properties specific to the container.
-			sequence: steps || []       // The sequence of steps or sub-containers; defaults to an empty array.
+			description: description || 'Description not provided.',
+			id: uid(),                    // Generate a unique identifier for the container.
+			componentType: 'container',   // Specify the component type as "container".
+			type,                         // The type of the container (e.g., stage, job).
+			name,                         // The name of the container.
+			parameters: parameters || {}, // Parameters specific to the container.
+			properties: properties || {}, // Properties specific to the container.
+			sequence: steps || []         // The sequence of steps or sub-containers; defaults to an empty array.
 		};
 	}
 
@@ -247,7 +312,7 @@ class StateMachineSteps {
 
 		// Set the remaining properties of the new G4 step object
 		step.categories = manifest.categories ? manifest.categories.join("|").toUpperCase() : "";
-		step.description = manifest.summary ? manifest.summary.join('\n') : 'TBD';
+		step.description = manifest.summary ? manifest.summary.join('\n') : 'Description not provided.';
 		step.id = uid();
 		step.name = step.name === "Actions Group" ? step.name : convertPascalToSpaceCase(manifest.key);
 		step.parameters = parameters;

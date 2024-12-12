@@ -138,8 +138,8 @@ async function initializeDesigner() {
 	let containersGroup = containers ? containers : { name: 'Containers', steps: [] };
 
 	// Create default container types for "Stage" and "Job".
-	const stage = StateMachineSteps.newG4Container('Stage', 'stage', {}, []);
-	const job = StateMachineSteps.newG4Container('Job', 'job', {}, []);
+	const stage = StateMachineSteps.newG4Stage('Stage', {}, {}, []);
+	const job = StateMachineSteps.newG4Job('Job', {}, {}, []);
 
 	// Add the containers to the "Containers" group.
 	containersGroup.steps.push(...[stage, job]);
@@ -188,15 +188,15 @@ function initializeStartDefinition(manifest) {
 	let initialStep = StateMachineSteps.newG4Step(manifest);
 
 	// Set a default value for the "Argument" property of the initial step.
-	initialStep.properties["Argument"] = "Foo Bar";
+	initialStep.properties["Argument"]["value"] = "Foo Bar";
 
 	// Create a job container with the initial step inside.
 	// 'G4™ Default Job' is the name, 'job' is the type, an empty object represents additional properties, and `[initialStep]` is the list of steps.
-	let job = StateMachineSteps.newG4Container('G4™ Default Job', 'job', {}, [initialStep]);
+	let job = StateMachineSteps.newG4Job('G4™ Default Job', {}, {}, [initialStep]);
 
 	// Create a stage container with the job inside.
 	// 'G4™ Default Stage' is the name, 'stage' is the type, and `[job]` represents the nested structure.
-	let stage = StateMachineSteps.newG4Container('G4™ Default Stage', 'stage', {}, [job]);
+	let stage = StateMachineSteps.newG4Stage('G4™ Default Stage', {}, {}, [job]);
 
 	// Return the stage as an array, as the function expects to return a list of containers.
 	return [stage];
@@ -429,15 +429,6 @@ function stepEditorProvider(step, editorContext, _definition) {
 				editorContext.notifyPropertiesChanged();
 			}
 		);
-	}
-
-	function initializeContainer(key, step, type) {
-		const isStage = key.toUpperCase() === 'STAGE';
-		const isJob = key.toUpperCase() === 'JOB';
-
-		if(!isStage && !isJob) {
-			return;
-		}
 	}
 
 	// Create the main container element for the editor.
