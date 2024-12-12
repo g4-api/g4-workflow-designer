@@ -4,18 +4,16 @@ let _designer;
 let _cache = {};
 let _cacheKeys = [];
 let _manifests = {};
+let _semaphore = 1;
 
-/**
- * Converts a PascalCase string to a space-separated string.
- *
- * @param {string} str - The PascalCase string to convert.
- * @returns {string} - The converted space-separated string.
- */
-function convertPascalToSpaceCase(str) {
-	return str ? str.replace(/([A-Z])/g, ' $1').trim() : 'N/A';
+function syncSleep(ms) {
+	const end = Date.now() + ms;
+	while (Date.now() < end) {
+		// Busy-wait loop: Blocks the main thread
+	}
 }
 
-function onRunClicked() {
+async function onRunClicked() {
 	if (_designer.isReadonly()) {
 		return;
 	}
@@ -27,30 +25,31 @@ function onRunClicked() {
 	_designer.setIsReadonly(true);
 
 	const definition = _designer.getDefinition();
-	const sm = new StateMachine(definition, definition.properties['speed'], {
-		executeStep: (step, data) => {
-			if (step.type === 'text') {
-				document.getElementById('console').innerText += step.properties['text'] + '\r\n';
-				return;
-			}
 
-			const varName = step.properties['var'];
-			const value = step.properties['val'];
-			//createVariableIfNeeded(varName, data);
-			switch (step.type) {
-				case 'add':
-					data[varName] += value;
-					break;
-				case 'sub':
-					data[varName] -= value;
-					break;
-				case 'mul':
-					data[varName] *= value;
-					break;
-				case 'div':
-					data[varName] /= value;
-					break;
-			}
+	let session = undefined;
+	const client = new G4Client();
+	const automation = client.newAutomation(undefined, undefined);
+
+	const stateMachine = new StateMachine(definition, definition.properties['speed'], {
+		executeStep: async (step, data) => {
+			// Convert the step to a rule and prepare the automation configuration.
+			const rule = client.convertToRule(step);
+			const rules = [rule];
+
+			// Assign the rules to the first job of the first stage.
+			automation.stages[0].jobs[0].rules = rules;
+
+			// Set driver parameters based on the session.
+			automation.driverParameters = session === undefined
+				? automation.driverParameters
+				: { driver: `Id(${session})` };
+
+			// Invoke the automation asynchronously and wait for the result.
+			const automationResult = await client.invokeAutomation(automation);
+
+			// Extract session information from the result.
+			const responseKey = Object.keys(automationResult)[0];
+			session = Object.keys(automationResult[responseKey].sessions)[0];
 		},
 
 		executeIf: (step, data) => {
@@ -70,17 +69,22 @@ function onRunClicked() {
 			return --data[varName] >= 0;
 		},
 
-		onStepExecuted: (step, data) => {
+		beforeStepExecution: (step, data) => {
 			document.getElementById('variables').innerText = JSON.stringify(data, null, 2) + '\r\n';
 			_designer.selectStepById(step.id);
 			_designer.moveViewportToStep(step.id);
 		},
+		// onStepExecuted: (step, data) => {
+		// 	document.getElementById('variables').innerText = JSON.stringify(data, null, 2) + '\r\n';
+		// 	_designer.selectStepById(step.id);
+		// 	_designer.moveViewportToStep(step.id);
+		// },
 
 		onFinished: () => {
 			_designer.setIsReadonly(false);
 		}
 	});
-	sm.start();
+	stateMachine.start();
 }
 
 /**

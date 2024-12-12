@@ -9,6 +9,48 @@ function uid() {
 	return Math.ceil(Math.random() * 10 ** 16).toString(16);
 }
 
+/**
+ * Converts a given string to camelCase.
+ *
+ * The function processes the input string by:
+ * 1. Removing any non-alphanumeric separators (e.g., spaces, dashes, underscores).
+ * 2. Capitalizing the first letter of each word except the first one.
+ * 3. Ensuring the first character of the resulting string is in lowercase.
+ *
+ * @param {string} str - The input string to be converted to camelCase.
+ * @returns {string} - The camelCase version of the input string. Returns 'N/A' if the input is falsy.
+ *
+ * @example
+ * convertToCamelCase("Hello World"); // "helloWorld"
+ * convertToCamelCase("convert_to_camel_case"); // "convertToCamelCase"
+ * convertToCamelCase("Convert-This String"); // "convertThisString"
+ * convertToCamelCase("alreadyCamelCase"); // "alreadyCamelCase"
+ * convertToCamelCase(""); // "N/A"
+ */
+function convertToCamelCase(str) {
+	// If the input string is falsy (e.g., null, undefined, empty), return 'N/A'.
+	if (!str) {
+		return 'N/A';
+	}
+
+	// Step 1: Replace any non-alphanumeric characters followed by a character with the uppercase of that character.
+	// This removes separators and capitalizes the following letter.
+	const camelCased = str.replace(/[^a-zA-Z0-9]+(.)/g, (_, chr) => chr.toUpperCase());
+
+	// Step 2: Convert the first character to lowercase to adhere to camelCase conventions.
+	return camelCased.charAt(0).toLowerCase() + camelCased.slice(1);
+}
+
+/**
+ * Converts a PascalCase string to a space-separated string.
+ *
+ * @param {string} str - The PascalCase string to convert.
+ * @returns {string} - The converted space-separated string.
+ */
+function convertPascalToSpaceCase(str) {
+	return str ? str.replace(/([A-Z])/g, ' $1').trim() : 'N/A';
+}
+
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 class StateMachine {
 	isInterrupted = false;
@@ -28,8 +70,8 @@ class StateMachine {
 		this.isRunning = false;
 	}
 
-	executeStep(step) {
-		this.handler.executeStep(step, this.data);
+	async executeStep(step) {
+		await this.handler.executeStep(step, this.data);
 	}
 
 	unwindStack() {
@@ -73,7 +115,7 @@ class StateMachine {
 		this.callstack.push(program);
 	}
 
-	execute() {
+	async execute() {
 		if (this.isInterrupted) {
 			this.handler.onInterrupted();
 			return;
@@ -111,7 +153,7 @@ class StateMachine {
 				this.executeLoopStep(step);
 				break;
 			default:
-				this.executeStep(step);
+				await this.executeStep(step);
 				break;
 		}
 
@@ -336,6 +378,12 @@ class G4Client {
 		// The base URL for the API.
 		this.baseUrl = baseUrl;
 
+		// The URL endpoint to invoke an automation sequence.
+		this.invokeUrl = `${this.baseUrl}/automation/invoke`;
+
+		// The URL endpoint to initialize an automation sequence.
+		this.initializeUri = `${this.baseUrl}/automation/init`;
+
 		// The URL endpoint to fetch plugin manifests.
 		this.manifestsUrl = `${this.baseUrl}/integration/manifests`;
 
@@ -344,6 +392,111 @@ class G4Client {
 
 		// An in-memory cache to store fetched manifests.
 		this.manifests = [];
+	}
+
+	// TODO: Handle the case were the parameters are array
+	// TODO: Handle the case were the parameters are dictionary
+	/**
+	 * Converts a step object into a rule object for the G4 Automation Sequence.
+	 *
+	 * This function transforms a given `step` object, which contains plugin information,
+	 * properties, and parameters, into a structured `rule` object suitable for use in
+	 * the G4 Automation Sequence. It handles the conversion of property keys to camelCase
+	 * and formats parameters as command-line arguments.
+	 *
+	 * @param {Object} step - The step object to convert.
+	 * @param {string} step.pluginName - The name of the plugin.
+	 * @param {Object} step.properties - An object containing properties for the plugin.
+	 * @param {Object} step.parameters - An object containing parameters for the plugin.
+	 * @returns {Object} - The converted rule object.
+	 *
+	 * @example
+	 * const step = {
+	 *   pluginName: 'SomePlugin',
+	 *   properties: {
+	 *     'Property One': { value: 'Value1' },
+	 *     'Property Two': { value: 'Value2' },
+	 *   },
+	 *   parameters: {
+	 *     'param1': { value: 'value1' },
+	 *     'param2': { value: 'value2' },
+	 *   }
+	 * };
+	 *
+	 * const rule = convertToRule(step);
+	 * console.log(rule);
+	 * // Output:
+	 * // {
+	 * //   "$type": "Action",
+	 * //   "pluginName": "SomePlugin",
+	 * //   "propertyOne": "Value1",
+	 * //   "propertyTwo": "Value2",
+	 * //   "argument": "{{$ --param1:value1 --param2:value2}}"
+	 * // }
+	 */
+	convertToRule(step) {
+		// Initialize the rule object with the default type and plugin name.
+		let rule = {
+			"$type": "Action",
+			"pluginName": step.pluginName
+		};
+
+		// Initialize an array to hold formatted parameter strings.
+		let parameters = [];
+
+		/**
+		 * Iterate over each property in the step's properties object.
+		 * Convert the property key to camelCase and assign its value to the rule object.
+		 */
+		for (const key in step.properties) {
+			// Convert the property key from its original format to camelCase.
+			const propertyKey = convertToCamelCase(key);
+
+			// Assign the property's value to the rule object using the camelCase key.
+			rule[propertyKey] = step.properties[key].value;
+		}
+
+		/**
+		 * Iterate over each parameter in the step's parameters object.
+		 * Format each parameter as "--key:value" and add it to the parameters array.
+		 */
+		for (const key in step.parameters) {
+			// Initialize the parameter token as an empty string.
+			let parameterToken = '';
+
+			// Check if the parameter has a value and is not an empty string.
+			const value = step.parameters[key].value;
+			const isValue = value && value.length > 0;
+
+			// Check if the parameter is a boolean switch (e.g., --key) or has a value (e.g., --key:value).
+			const isBoolean = step.parameters[key].type.toUpperCase() === 'SWITCH';
+
+			// Construct the parameter token based on the parameter type and value.
+			if (isBoolean && isValue) {
+				parameterToken = `--${key}`;
+			}
+			else if (isValue) {
+				parameterToken = `--${key}:${value}`;
+			}
+			else {
+				continue;
+			}
+
+			// Add the formatted parameter token to the parameters array.
+			parameters.push(`${parameterToken}`);
+		}
+
+		/**
+		 * If there are any parameters, concatenate them into a single string
+		 * and assign it to the rule's "argument" field in the specified format.
+		 */
+		if (parameters.length > 0) {
+			// The argument field uses a templating syntax with double curly braces.
+			rule["argument"] = `{{$ ${parameters.join(" ")}}}`;
+		}
+
+		// Return the fully constructed rule object.
+		return rule;
 	}
 
 	/**
@@ -481,5 +634,86 @@ class G4Client {
 			console.error('Failed to fetch G4 plugins:', error);
 			throw new Error(error);
 		}
+	}
+
+	/**
+	 * Invokes the G4 Automation Sequence by sending a POST request with the provided definition.
+	 *
+	 * This asynchronous function sends a JSON payload to a predefined automation URL using the Fetch API.
+	 * It handles the response by parsing the returned JSON data and managing errors that may occur during the request.
+	 *
+	 * @async
+	 * @function invokeAutomation
+	 * @param {Object} definition - The automation definition object to be sent in the POST request body.
+	 * @returns {Promise<Object>} - A promise that resolves to the parsed JSON response data from the server.
+	 * @throws {Error} - Throws an error if the network response is not ok or if the fetch operation fails.
+	 */
+	async invokeAutomation(definition) {
+		try {
+			// Invoke the G4 automation sequence by sending a POST request with the automation definition.
+			const response = await fetch(this.invokeUrl, {
+				method: 'POST', // HTTP method set to POST for sending data
+				headers: {
+					'Content-Type': 'application/json' // Indicates that the request body is in JSON format
+				},
+				body: JSON.stringify(definition) // Converts the definition object to a JSON string for the request body
+			});
+
+			// Check if the response status indicates a successful request (HTTP status code 200-299).
+			if (!response.ok) {
+				// If the response is not ok, throw an error with the status text for debugging purposes.
+				throw new Error(`Network response was not ok: ${response.statusText}`);
+			}
+
+			// Parse the JSON data from the successful response.
+			const data = await response.json();
+
+			// Return the parsed data for further processing by the caller.
+			return data;
+		} catch (error) {
+			// Log the error to the console for debugging and monitoring purposes.
+			console.error('Failed to invoke G4 automation:', error);
+
+			// Rethrow the original error to ensure that the caller can handle it appropriately.
+			// Using 'throw error' preserves the original error stack and message.
+			throw error;
+		}
+	}
+
+	newAutomation(authentication, driverParameters) {
+		driverParameters = driverParameters || {
+			"driver": "MicrosoftEdgeDriver",
+			"driverBinaries": "https://gravityapi1:pyhBifB6z1YxJv53xLip@hub-cloud.browserstack.com/wd/hub",
+			"capabilities": {
+				"alwaysMatch": {
+					"browserName": "MicrosoftEdge"
+				},
+				"firstMatch": [
+					{}
+				]
+			}
+		};
+		authentication = authentication || {
+			username: "pyhBifB6z1YxJv53xLip"
+		};
+
+		return {
+			authentication,
+			driverParameters,
+			stages: [
+				{
+					description: "Main Stage",
+					jobs: [
+						{
+							description: "Main Stage",
+							name: "Main Stage",
+							rules: [
+							]
+						}
+					],
+					name: "Main Stage"
+				}
+			]
+		};
 	}
 }
