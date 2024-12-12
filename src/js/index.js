@@ -431,6 +431,15 @@ function stepEditorProvider(step, editorContext, _definition) {
 		);
 	}
 
+	function initializeContainer(key, step, type) {
+		const isStage = key.toUpperCase() === 'STAGE';
+		const isJob = key.toUpperCase() === 'JOB';
+
+		if(!isStage && !isJob) {
+			return;
+		}
+	}
+
 	// Create the main container element for the editor.
 	const container = document.createElement('div');
 	container.title = step.description; // Set tooltip text to the step's description.
