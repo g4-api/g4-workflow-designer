@@ -465,6 +465,27 @@ class G4Client {
 			}).join(" ");
 		}
 
+		const convertFromDictionary = (parameter) => {
+			// Initialize parameter.value to an empty array if it is undefined or null.
+			parameter.value = parameter.value || {};
+
+			// Extract the keys from the parameter value object.
+			const keys = Object.keys(parameter.value);
+
+			// Return an empty string if the value array is empty.
+			if (Object.keys(parameter.value) === 0) {
+				return "";
+			}
+
+			// Extract the name property from the parameter object.
+			const name = parameter.name;
+
+			// Map each item in the value array to a formatted string and join them with spaces.
+			return keys.map(key => {
+				return `--${name}:${key}=${parameter.value[key]}`;
+			}).join(" ");
+		}
+
 		// Initialize the rule object with the default type and plugin name.
 		let rule = {
 			"$type": "Action",
@@ -494,13 +515,15 @@ class G4Client {
 		 * Format each parameter as "--key:value" and add it to the parameters array.
 		 */
 		for (const key in step.parameters) {
+			// Extract the parameter type from the step's parameters object.
+			const parameterType = step.parameters[key].type.toUpperCase();
+
 			// Check if the parameter has a value and is not an empty string.
 			const value = step.parameters[key].value;
-			const isArray = value && step.parameters[key].type.toUpperCase() === 'ARRAY';
-			const isValue = !isArray && value && value.length > 0;
-
-			// Check if the parameter is a boolean switch (e.g., --key) or has a value (e.g., --key:value).
-			const isBoolean = step.parameters[key].type.toUpperCase() === 'SWITCH';
+			const isArray = value && parameterType === 'ARRAY';
+			const isDictionary = value && (parameterType === 'DICTIONARY' || parameterType === 'KEY/VALUE' || parameterType === 'OBJECT');
+			const isBoolean = parameterType === 'SWITCH';
+			const isValue = !isDictionary && !isArray && value && value.length > 0;
 
 			// Construct the parameter token based on the parameter type and value.
 			if (isBoolean && isValue) {
@@ -511,6 +534,9 @@ class G4Client {
 			}
 			else if (isArray) {
 				parameterToken = convertFromArray(step.parameters[key]);
+			}
+			else if (isDictionary) {
+				parameterToken = convertFromDictionary(step.parameters[key]);
 			}
 			else if (!parameterToken || parameterToken === "") {
 				continue;
