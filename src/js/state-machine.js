@@ -394,7 +394,6 @@ class G4Client {
 		this.manifests = [];
 	}
 
-	// TODO: Handle the case were the parameters are array
 	// TODO: Handle the case were the parameters are dictionary
 	/**
 	 * Converts a step object into a rule object for the G4 Automation Sequence.
@@ -435,6 +434,37 @@ class G4Client {
 	 * // }
 	 */
 	convertToRule(step) {
+		/**
+		 * Converts an array parameter into a formatted string of command-line arguments.
+		 *
+		 * @param {Object}        parameter         - The parameter object containing the name and value.
+		 * @param {string}        parameter.name    - The name of the parameter.
+		 * @param {Array<string>} [parameter.value] - An array of values for the parameter.
+		 * @returns {string} - A string of formatted command-line arguments. Returns an empty string if the value array is empty.
+		 *
+		 * @example
+		 * const param = { name: 'option', value: ['val1', 'val2'] };
+		 * const result = convertFromArray(param);
+		 * console.log(result); // "--option:val1 --option:val2"
+		 */
+		const convertFromArray = (parameter) => {
+			// Initialize parameter.value to an empty array if it is undefined or null.
+			parameter.value = parameter.value || [];
+
+			// Return an empty string if the value array is empty.
+			if (parameter.value.length === 0) {
+				return "";
+			}
+
+			// Extract the name property from the parameter object.
+			const name = parameter.name;
+
+			// Map each item in the value array to a formatted string and join them with spaces.
+			return parameter.value.map(item => {
+				return `--${name}:${item}`;
+			}).join(" ");
+		}
+
 		// Initialize the rule object with the default type and plugin name.
 		let rule = {
 			"$type": "Action",
@@ -456,17 +486,18 @@ class G4Client {
 			rule[propertyKey] = step.properties[key].value;
 		}
 
+		// Initialize the parameter token as an empty string.
+		let parameterToken = '';
+
 		/**
 		 * Iterate over each parameter in the step's parameters object.
 		 * Format each parameter as "--key:value" and add it to the parameters array.
 		 */
 		for (const key in step.parameters) {
-			// Initialize the parameter token as an empty string.
-			let parameterToken = '';
-
 			// Check if the parameter has a value and is not an empty string.
 			const value = step.parameters[key].value;
-			const isValue = value && value.length > 0;
+			const isArray = value && step.parameters[key].type.toUpperCase() === 'ARRAY';
+			const isValue = !isArray && value && value.length > 0;
 
 			// Check if the parameter is a boolean switch (e.g., --key) or has a value (e.g., --key:value).
 			const isBoolean = step.parameters[key].type.toUpperCase() === 'SWITCH';
@@ -477,6 +508,12 @@ class G4Client {
 			}
 			else if (isValue) {
 				parameterToken = `--${key}:${value}`;
+			}
+			else if (isArray) {
+				parameterToken = convertFromArray(step.parameters[key]);
+			}
+			else if (!parameterToken || parameterToken === "") {
+				continue;
 			}
 			else {
 				continue;
