@@ -55,9 +55,9 @@ function convertPascalToSpaceCase(str) {
 class StateMachine {
 	isInterrupted = false;
 
-	constructor(definition, speed, handler) {
+	constructor(definition, handler) {
 		this.definition = definition;
-		this.speed = speed;
+		this.speed = definition.properties["speed"];
 		this.handler = handler;
 		this.data = {};
 		this.callstack = [
@@ -182,6 +182,19 @@ class StateMachine {
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 class StateMachineSteps {
+	static newG4Automation() {
+		const authentication = {
+			password: CustomFields.newStringField("Password", "The password for the G4 API.", "", true),
+			username: CustomFields.newStringField("Username", "The username for the G4 API.", "", true)
+		}
+
+		const driverParameters = {
+
+		}
+
+		return {}
+	}
+
 	/**
 	 * Creates a new Stage container for the G4 Automation Sequence.
 	 * 
@@ -394,7 +407,6 @@ class G4Client {
 		this.manifests = [];
 	}
 
-	// TODO: Handle the case were the parameters are dictionary
 	/**
 	 * Converts a step object into a rule object for the G4 Automation Sequence.
 	 *
@@ -465,22 +477,35 @@ class G4Client {
 			}).join(" ");
 		}
 
+		/**
+		 * Converts a dictionary parameter into a formatted string of command-line arguments.
+		 *
+		 * @param {Object} parameter - The parameter object containing the name and value.
+		 * @param {string} parameter.name - The name of the parameter.
+		 * @param {Object} [parameter.value] - An object representing key-value pairs for the parameter.
+		 * @returns {string} - A string of formatted command-line arguments. Returns an empty string if the value object is empty.
+		 *
+		 * @example
+		 * const param = { name: 'config', value: { host: 'localhost', port: '8080' } };
+		 * const result = convertFromDictionary(param);
+		 * console.log(result); // "--config:host=localhost --config:port=8080"
+		 */
 		const convertFromDictionary = (parameter) => {
-			// Initialize parameter.value to an empty array if it is undefined or null.
+			// Initialize parameter.value to an empty object if it is undefined or null.
 			parameter.value = parameter.value || {};
 
 			// Extract the keys from the parameter value object.
 			const keys = Object.keys(parameter.value);
 
-			// Return an empty string if the value array is empty.
-			if (Object.keys(parameter.value) === 0) {
+			// Return an empty string if the value object has no keys.
+			if (keys.length === 0) {
 				return "";
 			}
 
 			// Extract the name property from the parameter object.
 			const name = parameter.name;
 
-			// Map each item in the value array to a formatted string and join them with spaces.
+			// Map each key-value pair to a formatted string and join them with spaces.
 			return keys.map(key => {
 				return `--${name}:${key}=${parameter.value[key]}`;
 			}).join(" ");

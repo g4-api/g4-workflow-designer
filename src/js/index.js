@@ -6,13 +6,6 @@ let _cacheKeys = [];
 let _manifests = {};
 let _semaphore = 1;
 
-function syncSleep(ms) {
-	const end = Date.now() + ms;
-	while (Date.now() < end) {
-		// Busy-wait loop: Blocks the main thread
-	}
-}
-
 async function onRunClicked() {
 	if (_designer.isReadonly()) {
 		return;
@@ -30,7 +23,7 @@ async function onRunClicked() {
 	const client = new G4Client();
 	const automation = client.newAutomation(undefined, undefined);
 
-	const stateMachine = new StateMachine(definition, definition.properties['speed'], {
+	const stateMachine = new StateMachine(definition, {
 		executeStep: async (step, data) => {
 			// Convert the step to a rule and prepare the automation configuration.
 			const rule = client.convertToRule(step);
@@ -206,7 +199,7 @@ function initializeStartDefinition(manifest) {
 	return [stage];
 }
 
-function newConfiguration(manifestsGroups) {
+function newConfiguration() {
 	return {
 		undoStackSize: 5,
 
@@ -246,7 +239,11 @@ function newConfiguration(manifestsGroups) {
 				const supportedIcons = ['if', 'loop', 'text', 'job', 'stage'];
 				const fileName = supportedIcons.includes(type) ? type : 'task';
 				return `./images/icon-${fileName}.svg`;
-			}
+			},
+			// canInsertStep: (step, _, container, a, b, c, d) => {
+			// 	var a = designer;
+			// 	var b = "";
+			// }
 		},
 
 		validator: {
@@ -297,8 +294,9 @@ function newStartDefinition(sequence) {
  * @returns {HTMLElement} A container element housing the root editor fields.
  */
 function rootEditorProvider(definition, editorContext, isReadonly) {
-	// Create a span element as the container for the editor.
-	const container = document.createElement('span');
+	// Create the main container div element for the root editor.
+	const container = document.createElement('div');
+	container.setAttribute("g4-role", "root-editor");
 
 	// Add a title to the container to indicate the configuration section.
 	CustomFields.newTitle(container, 'Automation Settings', 'Flow Configuration');
@@ -306,19 +304,32 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 	// Add a string input field for configuring the "Invocation Interval".
 	CustomFields.newStringField(
 		container,
-		definition, 						   // Definition object
-		'Invocation Interval (ms)',            // Field label
-		'Time between each action invocation', // Field description
-		definition.properties['speed'],        // Current value of the "speed" property
-		isReadonly,                            // Read-only mode flag
+		definition,                            // The automation definition object.
+		'Invocation Interval (ms)',            // Label for the input field.
+		'Time between each action invocation', // Description tooltip for the input field.
+		definition.properties['speed'],        // Current value of the "speed" property.
+		isReadonly,                            // Flag to set the field as read-only if true.
 		(value) => {
 			// Update the "speed" property with the new value from the input.
 			definition.properties['speed'] = parseInt(value, 10); // Ensure the value is an integer.
-			editorContext.notifyPropertiesChanged();              // Notify the editor of the change.
+			editorContext.notifyPropertiesChanged();
 		}
 	);
 
-	// Return the container with all added elements.
+	// Add an authentication field for providing G4 credentials to allow automation requests.
+	CustomG4Fields.newAuthenticationField(
+		container,
+		"G4™ Authentication",                                    // Label for the authentication section.
+		"Provide G4™ credentials to allow automation requests.", // Description tooltip for the authentication section.
+		definition.properties['authentication'],                 // Current value of the "authentication" property.
+		(value) => {
+			// Update the "authentication" property with the new value from the input.
+			definition.properties['authentication'] = value;
+			editorContext.notifyPropertiesChanged();
+		}
+	);
+
+	// Return the fully constructed container with all added elements.
 	return container;
 }
 

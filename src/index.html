@@ -64,14 +64,16 @@
 			line-height: 1.3em;
 			min-height: 31.33px;
 		}
+
 		.sqd-editor textarea {
 			margin: 0px;
 			min-height: 55px;
 		}
 
-		.sqd-editor div[g4-role='field']{
+		.sqd-editor div[g4-role='field'] {
 			margin-top: 1em;
 		}
+
 		.sqd-editor div[g4-role='hint'] {
 			margin-top: 0.25em;
 			margin-bottom: 0.25em;
@@ -226,6 +228,7 @@
 			align-items: center;
 			justify-content: space-between;
 		}
+
 		.text-with-button button {
 			box-sizing: border-box;
 			border: 1px solid silver;
@@ -245,6 +248,38 @@
 			width: 1em;
 			height: 1em;
 			vertical-align: middle;
+		}
+	</style>
+
+	<style>
+		details {
+			border: 1px solid silver;
+			border-radius: 4px;
+			border-radius: 0px;
+			padding: 10px;
+			max-width: 500px;
+			margin: 0.25em auto;
+		}
+
+		summary {
+			font-size: 1.2em;
+			cursor: pointer;
+			outline: none;
+		}
+
+		.content {
+			margin-top: 10px;
+			animation: fadeIn 0.3s ease-in-out;
+		}
+
+		@keyframes fadeIn {
+			from {
+				opacity: 0;
+			}
+
+			to {
+				opacity: 1;
+			}
 		}
 	</style>
 </head>
