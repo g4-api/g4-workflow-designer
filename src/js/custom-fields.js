@@ -361,54 +361,45 @@ class CustomG4Fields {
         const controller = fieldContainer.querySelector(`#${id}-controller`);
 
         // Create a new string input field for the "Username" with an empty initial value or the provided initial username.
-        const usernameField = CustomFields.newStringField(
+        CustomFields.newStringField(
             controller,                                          // Parent element to append the username field.
             {},
             'Username',                                          // Label for the username input field.
             'A valid G4™ username required for authentication.', // Description tooltip for the username input field.
             initialValue?.username || '',                        // Initial value for the username field; defaults to an empty string if undefined.
             false,                                               // Read-only flag; set to false to allow user input.
-            undefined                                            // Optional callback for additional handling (not used here).
+            (value) => {
+                const authentication = {
+                    username: value
+                };
+                setCallback(authentication);
+            }
         );
 
         // Create a new string input field for the "Password" with an empty initial value or the provided initial password.
-        const passwordField = CustomFields.newStringField(
+        CustomFields.newStringField(
             controller,                                          // Parent element to append the password field.
             {},
             'Password',                                          // Label for the password input field.
             'A valid G4™ password required for authentication.', // Description tooltip for the password input field.
             initialValue?.password || '',                        // Initial value for the password field; defaults to an empty string if undefined.
             false,                                               // Read-only flag; set to false to allow user input.
-            undefined                                            // Optional callback for additional handling (not used here).
+            (value) => {
+                const authentication = {
+                    password: value
+                };
+                setCallback(authentication);
+            }
         );
 
         // Append the controller container to the main field container.
         fieldContainer.appendChild(controller);
 
-        // Select the username input element within the usernameField container using the data attribute.
-        const username = usernameField.querySelector('[data-g4-attribute="Username"]');
-
-        // Select the password input element within the passwordField container using the data attribute.
-        const password = passwordField.querySelector('[data-g4-attribute="Password"]');
-
-        /**
-         * Adds an event listener to the field container that listens for any input changes.
-         * When an input event is detected, it retrieves the current values of the username
-         * and password fields and invokes the setCallback function with the updated credentials.
-         */
-        fieldContainer.addEventListener('input', () => {
-            // Construct an object with the current values of username and password.
-            const value = {
-                username: username.value,
-                password: password.value
-            };
-
-            // Invoke the callback function with the updated credentials.
-            setCallback(value);
-        });
-
         // Append the fully constructed field container to the provided parent container in the DOM.
         container.appendChild(fieldContainer);
+
+        // Return the field container for further manipulation if needed.
+        return container;
     }
 
     /**
@@ -453,97 +444,87 @@ class CustomG4Fields {
         const controller = fieldContainer.querySelector(`#${id}-controller`);
 
         // Create a new number input field for the "LoadTimeout".
-        const loadTimeoutField = CustomFields.newNumberField(
+        CustomFields.newNumberField(
             controller,
             "LoadTimeout",
             "The maximum time (in milliseconds) the driver should wait for a page to load when setting the `IWebDriver.Url` property.",
             initialValue?.loadTimeout || 60000,
             1,
             false,
-            undefined
+            (value) => {
+                const automationSettings = {
+                    loadTimeout: value
+                };
+                setCallback(automationSettings);
+            }
         );
 
         // Create a new number input field for the "MaxParallel".
-        const maxParallelField = CustomFields.newNumberField(
+        CustomFields.newNumberField(
             controller,
             "MaxParallel",
             "The number of parallel rows to execute actions based on `G4DataProvider`.",
             initialValue?.maxParallel || 1,
             1,
             false,
-            undefined
+            (value) => {
+                const automationSettings = {
+                    maxParallel: value
+                };
+                setCallback(automationSettings);
+            }
         );
 
+        // container, label, title, initialValue, setCallback
         // Create a new switch field for the "ReturnFlatResponse".
-        const returnFlatResponseField = CustomFields.newSwitchField(
+        CustomFields.newSwitchField(
             controller,
             "ReturnFlatResponse",
             "A valid G4 username and password are required to authenticate and authorize automation requests.",
             initialValue?.returnFlatResponse || false,
-            false,
-            undefined
+            (value) => {
+                const automationSettings = {
+                    returnFlatResponse: convertStringToBool(value)
+                };
+                setCallback(automationSettings);
+            }
         );
 
         // Create a new switch field for the "ReturnStructuredResponse".
-        const returnStructuredResponseField = CustomFields.newSwitchField(
+        CustomFields.newSwitchField(
             controller,
             "ReturnStructuredResponse",
             "A valid G4 username and password are required to authenticate and authorize automation requests.",
             initialValue?.returnStructuredResponse || false,
-            false,
-            undefined
+            (value) => {
+                const automationSettings = {
+                    returnStructuredResponse: convertStringToBool(value)
+                };
+                setCallback(automationSettings);
+            }
         );
 
         // Create a new number input field for the "SearchTimeout".
-        const searchTimeoutField = CustomFields.newNumberField(
+        CustomFields.newNumberField(
             controller,
             "SearchTimeout",
             "The maximum time (in milliseconds) to wait for an element to be found during searches.",
             initialValue?.searchTimeout || 15000,
             1,
             false,
-            undefined
+            (value) => {
+                const automationSettings = {
+                    searchTimeout: value
+                };
+                setCallback(automationSettings);
+            }
         );
-
-        // Append the controller container to the main field container.
-        fieldContainer.appendChild(controller);
-
-        // Select the LoadTimeout input element within the loadTimeoutField container using the data attribute.
-        const loadTimeout = loadTimeoutField.querySelector('[data-g4-attribute="LoadTimeout"]');
-
-        // Select the MaxParallel input element within the maxParallelField container using the data attribute.
-        const maxParallel = maxParallelField.querySelector('[data-g4-attribute="MaxParallel"]');
-
-        // Select the ReturnFlatResponse input element within the returnFlatResponseField container using the data attribute.
-        const returnFlatResponse = returnFlatResponseField.querySelector('[data-g4-attribute="ReturnFlatResponse"]');
-
-        // Select the ReturnStructuredResponse input element within the returnStructuredResponseField container using the data attribute.
-        const returnStructuredResponse = returnStructuredResponseField.querySelector('[data-g4-attribute="ReturnStructuredResponse"]');
-
-        // Select the SearchTimeout input element within the searchTimeoutField container using the data attribute.
-        const searchTimeout = searchTimeoutField.querySelector('[data-g4-attribute="SearchTimeout"]');
-
-        /**
-         * Adds an event listener to the field container that listens for any input changes.
-         * When an input event is detected, it retrieves the current values of all automation settings
-         * and invokes the setCallback function with the updated settings.
-         */
-        fieldContainer.addEventListener('input', () => {
-            // Construct an object with the current values of all automation settings.
-            const value = {
-                loadTimeout: parseInt(loadTimeout.value, 10),
-                maxParallel: parseInt(maxParallel.value, 10),
-                returnFlatResponse: convertStringToBool(returnFlatResponse?.value),
-                returnStructuredResponse: convertStringToBool(returnStructuredResponse?.value),
-                searchTimeout: parseInt(searchTimeout.value, 10)
-            };
-
-            // Invoke the callback function with the updated automation settings.
-            setCallback(value || {});
-        });
 
         // Append the fully constructed field container to the provided parent container in the DOM.
         container.appendChild(fieldContainer);
+
+        // Return the field container for further manipulation if needed.
+        return container;
     }
 }
 
@@ -887,14 +868,14 @@ class CustomFields {
                 // Remove this row from the container when clicked.
                 container.removeChild(row);
 
-                // Find the closest [g4-role="field"] container, then locate the controller within it.
-                const fieldContainer = container.closest('[g4-role="field"]');
-                if (fieldContainer) {
-                    const titleContainer = fieldContainer.querySelector('[g4-role="controller"]');
+                // // Find the closest [g4-role="field"] container, then locate the controller within it.
+                // const fieldContainer = container.closest('[g4-role="field"]');
+                // if (fieldContainer) {
+                //     const titleContainer = fieldContainer.querySelector('[g4-role="controller"]');
 
-                    // After removing a row, update the values via the callback.
-                    callback(titleContainer);
-                }
+                //     // After removing a row, update the values via the callback.
+                //     callback(titleContainer);
+                // }
             };
 
             // Append the remove button, key input, and value input into the row.
@@ -998,7 +979,9 @@ class CustomFields {
         }
 
         // Listen for changes and update values whenever the user types in any input field.
-        fieldContainer.addEventListener('input', () => callback(fieldContainer));
+        fieldContainer.addEventListener('input', () => {
+            callback(fieldContainer);
+        });
 
         // Return the field container for potential further use by the calling code.
         return fieldContainer;

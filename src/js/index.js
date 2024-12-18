@@ -323,13 +323,19 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 		"Provide G4™ credentials to allow automation requests.", // Description tooltip for the authentication section.
 		definition.properties['authentication'],                 // Current value of the "authentication" property.
 		(value) => {
-			// Update the "authentication" property with the new value from the input.
-			definition.properties['authentication'] = value;
+			// Ensure the "authentication" property exists in the definition.
+			definition.properties['authentication'] = definition.properties['authentication'] || {};
+			
+			// Update the "authentication" property with the new values from the input.
+			for (const key of Object.keys(value)) {
+				definition.properties['authentication'][key] = value[key];
+			}
+
+			// Notify the editor of the updated properties.
 			editorContext.notifyPropertiesChanged();
 		}
 	);
 
-	// container, label, title, initialValue, setCallback
 	// Add an automation settings field for configuring the automation settings.
 	CustomG4Fields.newAutomationSettingsField(
 		container,
@@ -337,7 +343,15 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 		"Provide G4™ automation settings to configure the automation.",
 		definition.properties['automationSettings'],
 		(value) => {
-			definition.properties['automationSettings'] = value;
+			// Ensure the "automationSettings" property exists in the definition.
+			definition.properties['automationSettings'] = definition.properties['automationSettings'] || {};
+			
+			// Update the "authentication" property with the new values from the input.
+			for (const key of Object.keys(value)) {
+				definition.properties['automationSettings'][key] = value[key];
+			}
+
+			// Notify the editor of the updated properties.
 			editorContext.notifyPropertiesChanged();
 		}
 	);
