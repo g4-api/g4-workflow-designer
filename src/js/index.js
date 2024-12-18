@@ -329,6 +329,19 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 		}
 	);
 
+	// container, label, title, initialValue, setCallback
+	// Add an automation settings field for configuring the automation settings.
+	CustomG4Fields.newAutomationSettingsField(
+		container,
+		"G4™ Automation Settings",
+		"Provide G4™ automation settings to configure the automation.",
+		definition.properties['automationSettings'],
+		(value) => {
+			definition.properties['automationSettings'] = value;
+			editorContext.notifyPropertiesChanged();
+		}
+	);
+
 	// Return the fully constructed container with all added elements.
 	return container;
 }

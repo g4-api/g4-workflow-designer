@@ -1,4 +1,49 @@
 /**
+ * Parses a given string and converts it to its corresponding boolean value.
+ *
+ * The function recognizes the following case-insensitive string representations:
+ * - `'true'`, `'1'`, `'yes'`, `'y'`, `'on'` → `true`
+ * - `'false'`, `'0'`, `'no'`, `'n'`, `'off'` → `false`
+ *
+ * If the input string does not match any recognized boolean representations,
+ * the function returns `null` to indicate an unparseable value.
+ *
+ * @param {string} str - The string to parse into a boolean.
+ * @returns {boolean|null} - The parsed boolean value or `null` if parsing fails.
+ *
+ * @example
+ * parseStringToBool('true');   // returns true
+ * parseStringToBool('FALSE');  // returns false
+ * parseStringToBool('Yes');    // returns true
+ * parseStringToBool('no');     // returns false
+ * parseStringToBool('1');      // returns true
+ * parseStringToBool('0');      // returns false
+ * parseStringToBool('maybe');  // returns null
+ */
+function convertStringToBool(str) {
+    if (typeof str !== 'string') {
+        console.warn(`parseStringToBool: Expected a string but received type '${typeof str}'.`);
+        return null;
+    }
+
+    // Trim whitespace and convert the string to lowercase for case-insensitive comparison
+    const normalizedStr = str.trim().toLowerCase();
+
+    // Define mappings of string representations to boolean values
+    const trueValues = ['true', '1', 'yes', 'y', 'on'];
+    const falseValues = ['false', '0', 'no', 'n', 'off'];
+
+    if (trueValues.includes(normalizedStr)) {
+        return true;
+    } else if (falseValues.includes(normalizedStr)) {
+        return false;
+    } else {
+        console.warn(`parseStringToBool: Unable to parse '${str}' to a boolean.`);
+        return null;
+    }
+}
+
+/**
  * Creates a new field container with a labeled input and a hint icon.
  *
  * @param {string} id               - The unique identifier for the input field. This should match the `id` of the corresponding input element.
@@ -365,6 +410,141 @@ class CustomG4Fields {
         // Append the fully constructed field container to the provided parent container in the DOM.
         container.appendChild(fieldContainer);
     }
+
+    /**
+     * Creates and appends a new automation settings field to the specified container.
+     *
+     * This static method generates a structured set of input fields for configuring various
+     * automation settings such as load timeout, maximum parallel executions, and response formats.
+     * It utilizes the CustomFields utility to create input elements and sets up event listeners
+     * to handle changes, invoking the provided callback with the updated settings.
+     *
+     * @param {HTMLElement} container    - The parent DOM element to which the automation settings fields will be appended.
+     * @param {string}      label        - The display label for the automation settings section.
+     * @param {string}      title        - The tooltip text providing additional information about the automation settings.
+     * @param {Object}      initialValue - An object containing the initial values for the automation settings.
+     * @param {Function} setCallback - A callback function that is invoked whenever the automation settings are updated. It receives an object with the updated settings.
+     *
+     * @example
+     * // Assuming 'container' is a valid DOM element and 'setCallback' is a defined function
+     * const initialSettings = {
+     *     loadTimeout: 60000,
+     *     maxParallel: 1,
+     *     returnFlatResponse: false,
+     *     returnStructuredResponse: false,
+     *     searchTimeout: 15000
+     * };
+     *
+     * newAutomationSettingsField(container, 'Automation Settings', 'Configure various automation parameters.', initialSettings, (updatedSettings) => {
+     *     console.log('Automation settings updated:', updatedSettings);
+     * });
+     */
+    static newAutomationSettingsField(container, label, title, initialValue, setCallback) {
+        // Generate a unique identifier for the automation settings fields.
+        const inputId = newUid();
+
+        // Escape the unique identifier to ensure it's safe for use in CSS selectors.
+        const id = CSS.escape(inputId);
+
+        // Create a container with multiple fields using the provided ID, label, and title.
+        const fieldContainer = newMultipleFieldsContainer(inputId, label, title);
+
+        // Select the controller sub-container within the field container using the unique ID.
+        const controller = fieldContainer.querySelector(`#${id}-controller`);
+
+        // Create a new number input field for the "LoadTimeout".
+        const loadTimeoutField = CustomFields.newNumberField(
+            controller,
+            "LoadTimeout",
+            "The maximum time (in milliseconds) the driver should wait for a page to load when setting the `IWebDriver.Url` property.",
+            initialValue?.loadTimeout || 60000,
+            1,
+            false,
+            undefined
+        );
+
+        // Create a new number input field for the "MaxParallel".
+        const maxParallelField = CustomFields.newNumberField(
+            controller,
+            "MaxParallel",
+            "The number of parallel rows to execute actions based on `G4DataProvider`.",
+            initialValue?.maxParallel || 1,
+            1,
+            false,
+            undefined
+        );
+
+        // Create a new switch field for the "ReturnFlatResponse".
+        const returnFlatResponseField = CustomFields.newSwitchField(
+            controller,
+            "ReturnFlatResponse",
+            "A valid G4 username and password are required to authenticate and authorize automation requests.",
+            initialValue?.returnFlatResponse || false,
+            false,
+            undefined
+        );
+
+        // Create a new switch field for the "ReturnStructuredResponse".
+        const returnStructuredResponseField = CustomFields.newSwitchField(
+            controller,
+            "ReturnStructuredResponse",
+            "A valid G4 username and password are required to authenticate and authorize automation requests.",
+            initialValue?.returnStructuredResponse || false,
+            false,
+            undefined
+        );
+
+        // Create a new number input field for the "SearchTimeout".
+        const searchTimeoutField = CustomFields.newNumberField(
+            controller,
+            "SearchTimeout",
+            "The maximum time (in milliseconds) to wait for an element to be found during searches.",
+            initialValue?.searchTimeout || 15000,
+            1,
+            false,
+            undefined
+        );
+
+        // Append the controller container to the main field container.
+        fieldContainer.appendChild(controller);
+
+        // Select the LoadTimeout input element within the loadTimeoutField container using the data attribute.
+        const loadTimeout = loadTimeoutField.querySelector('[data-g4-attribute="LoadTimeout"]');
+
+        // Select the MaxParallel input element within the maxParallelField container using the data attribute.
+        const maxParallel = maxParallelField.querySelector('[data-g4-attribute="MaxParallel"]');
+
+        // Select the ReturnFlatResponse input element within the returnFlatResponseField container using the data attribute.
+        const returnFlatResponse = returnFlatResponseField.querySelector('[data-g4-attribute="ReturnFlatResponse"]');
+
+        // Select the ReturnStructuredResponse input element within the returnStructuredResponseField container using the data attribute.
+        const returnStructuredResponse = returnStructuredResponseField.querySelector('[data-g4-attribute="ReturnStructuredResponse"]');
+
+        // Select the SearchTimeout input element within the searchTimeoutField container using the data attribute.
+        const searchTimeout = searchTimeoutField.querySelector('[data-g4-attribute="SearchTimeout"]');
+
+        /**
+         * Adds an event listener to the field container that listens for any input changes.
+         * When an input event is detected, it retrieves the current values of all automation settings
+         * and invokes the setCallback function with the updated settings.
+         */
+        fieldContainer.addEventListener('input', () => {
+            // Construct an object with the current values of all automation settings.
+            const value = {
+                loadTimeout: parseInt(loadTimeout.value, 10),
+                maxParallel: parseInt(maxParallel.value, 10),
+                returnFlatResponse: convertStringToBool(returnFlatResponse?.value),
+                returnStructuredResponse: convertStringToBool(returnStructuredResponse?.value),
+                searchTimeout: parseInt(searchTimeout.value, 10)
+            };
+
+            // Invoke the callback function with the updated automation settings.
+            setCallback(value || {});
+        });
+
+        // Append the fully constructed field container to the provided parent container in the DOM.
+        container.appendChild(fieldContainer);
+    }
 }
 
 class CustomFields {
@@ -522,6 +702,9 @@ class CustomFields {
 
         // Append the newly created field container (with controller) to the main container.
         container.appendChild(fieldContainer);
+
+        // Return the field container for further manipulation if needed.
+        return container;
     }
 
     /**
@@ -620,6 +803,9 @@ class CustomFields {
 
         // Append the field container to the parent container.
         container.appendChild(fieldContainer);
+
+        // Return the field container for further manipulation if needed.
+        return container;
     }
 
     /**
@@ -813,6 +999,9 @@ class CustomFields {
 
         // Listen for changes and update values whenever the user types in any input field.
         fieldContainer.addEventListener('input', () => callback(fieldContainer));
+
+        // Return the field container for potential further use by the calling code.
+        return fieldContainer;
     }
 
     /**
@@ -909,6 +1098,9 @@ class CustomFields {
 
         // Append the field container to the parent container.
         container.appendChild(fieldContainer);
+
+        // Return the container for potential further use by the calling code.
+        return container;
     }
 
     /**
@@ -989,6 +1181,75 @@ class CustomFields {
 
         // Append the field container to the parent container.
         container.appendChild(fieldContainer);
+
+        // Return the container for potential further use by the calling code.
+        return container;
+    }
+
+    /**
+     * Creates and appends a new number input field to the specified container.
+     *
+     * @param {HTMLElement}   container     - The parent element to which the number field will be appended.
+     * @param {string}        label         - The identifier for the number field, expected in PascalCase format.
+     * @param {string}        title         - The title attribute for the input element, typically used for tooltips.
+     * @param {string|number} initialValue  - The initial value to populate the input field. Defaults to an empty string if invalid.
+     * @param {number}        step          - The step attribute for the input element, determining the legal number intervals.
+     * @param {boolean}       isReadonly    - Determines if the input field should be read-only.
+     * @param {function}      [setCallback] - An optional callback function invoked whenever the input value changes.
+     */
+    static newNumberField(container, label, title, initialValue, step, isReadonly, setCallback) {
+        // Generate a unique ID for the input element to ensure uniqueness in the DOM.
+        const inputId = newUid();
+
+        // Convert the label from PascalCase to a space-separated format for user-friendly display.
+        const labelDisplayName = convertPascalToSpaceCase(label);
+
+        // Validate and set the initial value. If invalid (undefined, NaN, or 'undefined'), default to an empty string.
+        initialValue = (!initialValue || isNaN(initialValue) || initialValue === 'undefined') ? '' : initialValue;
+
+        // Construct the HTML string for the number input element with necessary attributes.
+        const html = `
+        <input 
+            id="${inputId}"
+            data-g4-attribute="${label}" 
+            title="${initialValue}" 
+            type="number" 
+            step="${step}"
+            value="${initialValue}" />`;
+
+        // Create a new field container div that includes a label and an optional icon.
+        const fieldContainer = newFieldContainer(inputId, labelDisplayName, title);
+
+        // Select the controller container within the field container where the input will be inserted.
+        const controllerContainer = fieldContainer.querySelector('[g4-role="controller"]');
+
+        // Insert the constructed input HTML into the controller container.
+        controllerContainer.insertAdjacentHTML('beforeend', html);
+
+        // Retrieve the input element from the controller container for further manipulation.
+        const input = controllerContainer.querySelector('input');
+
+        // If the field is marked as read-only, set the 'readonly' attribute on the input element.
+        if (isReadonly) {
+            input.setAttribute('readonly', 'readonly');
+        }
+
+        // Add an event listener to the field container to handle input events if a callback is provided.
+        if (typeof setCallback === 'function') {
+            fieldContainer.addEventListener('input', () => {
+                // Update the title attribute to reflect the current input value, useful for tooltips.
+                input.title = input.value;
+
+                // Invoke the callback function with the new input value.
+                setCallback(input.value);
+            });
+        }
+
+        // Append the fully constructed field container to the specified parent container in the DOM.
+        container.appendChild(fieldContainer);
+
+        // Return the container for potential further use by the calling code.
+        return container;
     }
 
     /**
@@ -1122,7 +1383,7 @@ class CustomFields {
 
         // Build the HTML structure for the dropdown field.
         let html = `
-        <select title="${initialValue}">
+        <select data-g4-attribute="${label}" title="${initialValue}">
             <option value="" disabled selected>-- Please select an option --</option>
             <option value="true" title="Activate switch">True</option>
             <option value="false" title="Deactivate switch">False</option>
@@ -1142,72 +1403,80 @@ class CustomFields {
         select.value = initialValue;
 
         // Attach an event listener to handle value changes.
-        fieldContainer.addEventListener('input', () => {
-            select.title = select.value;
-            setCallback(select.value);
-        });
+        if (setCallback) {
+            fieldContainer.addEventListener('input', () => {
+                select.title = select.value;
+                setCallback(select.value);
+            });
+        }
 
         // Append the fully constructed title container to the parent container.
         container.appendChild(fieldContainer);
+
+        // Return the container for potential further use by the calling code.
+        return container;
     }
 
-
-
-
-
-
-
+    /**
+     * Creates and appends a new text input field to the specified container.
+     *
+     * @param {HTMLElement}   container    - The parent element to which the text field will be appended.
+     * @param {string}        label        - The identifier for the text field, expected in PascalCase format.
+     * @param {string}        title        - The title attribute for the input element, typically used for tooltips.
+     * @param {string|number} initialValue - The initial value to populate the input field. Defaults to an empty string if invalid.
+     * @param {number}        step         - (Optional) The step attribute for the input element. Not used in the current implementation.
+     * @param {boolean}       isReadonly   - Determines if the input field should be read-only.
+     * @param {function}      setCallback  - A callback function invoked whenever the input value changes.
+     */
     static newTextField(container, label, title, initialValue, step, isReadonly, setCallback) {
-        // Generate a unique ID for the textarea element.
+        // Generate a unique ID for the input element.
         const inputId = newUid();
 
-        // Convert the label from PascalCase to a space-separated format for display.
+        // Convert the label from PascalCase to a space-separated format for display purposes.
         const labelDisplayName = convertPascalToSpaceCase(label);
 
-        // Set the initial value to an empty string if it is not defined or is NaN.
-        initialValue = !initialValue || initialValue === NaN || initialValue === 'undefined'
-            ? ''
-            : initialValue;
+        // Validate and set the initial value. If invalid (undefined, NaN, or 'undefined'), default to an empty string.
+        initialValue = (!initialValue || isNaN(initialValue) || initialValue === 'undefined') ? '' : initialValue;
 
-        // Start building the HTML structure for the dropdown field.
-        let html = `
+        // Construct the HTML string for the text input element with necessary attributes.
+        const html = `
         <input 
             data-g4-attribute="${label}" 
             title="${initialValue}" 
             type="text" 
-            spellcheck='false'
-            value='${initialValue}' />`;
+            spellcheck="false"
+            value="${initialValue}" />`;
 
-        // Create a new field container div with a label and icon.
+        // Create a new field container div that includes a label and an optional icon.
         const fieldContainer = newFieldContainer(inputId, labelDisplayName, title);
 
-        // Select the controller container within the field container.
+        // Select the controller container within the field container where the input will be inserted.
         const controllerContainer = fieldContainer.querySelector('[g4-role="controller"]');
 
-        // Set the inner HTML of the field container to the constructed input controller.
+        // Insert the constructed input HTML into the controller container.
         controllerContainer.insertAdjacentHTML('beforeend', html);
 
-        // Select the input element within the field container
+        // Retrieve the input element from the controller container for further manipulation.
         const input = controllerContainer.querySelector('input');
 
-        // If the field should be read-only, set the 'readonly' attribute on the input
+        // If the field is marked as read-only, set the 'readonly' attribute on the input element.
         if (isReadonly) {
             input.setAttribute('readonly', 'readonly');
         }
 
-        // Add an event listener to handle input changes and invoke the callback with the new value
+        // Add an event listener to the field container to handle input events.
+        // When the input value changes, update the title attribute and invoke the callback with the new value.
         fieldContainer.addEventListener('input', () => {
             input.title = input.value;
             setCallback(input.value);
         });
 
-        // Append the field container to the parent container.
+        // Append the fully constructed field container to the specified parent container in the DOM.
         container.appendChild(fieldContainer);
+
+        // Return the container for potential further use by the calling code.
+        return container;
     }
-
-
-
-
 
     /**
      * Creates and appends a new title section to the specified container.
@@ -1278,5 +1547,8 @@ class CustomFields {
 
         // Append the populated title container to the provided parent container
         container.appendChild(titleContainer);
+
+        // Return the container for potential further use by the calling code
+        return container;
     }
 }
