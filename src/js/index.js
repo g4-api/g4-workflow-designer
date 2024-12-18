@@ -346,9 +346,47 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 			// Ensure the "automationSettings" property exists in the definition.
 			definition.properties['automationSettings'] = definition.properties['automationSettings'] || {};
 			
-			// Update the "authentication" property with the new values from the input.
+			// Update the "automationSettings" property with the new values from the input.
 			for (const key of Object.keys(value)) {
 				definition.properties['automationSettings'][key] = value[key];
+			}
+
+			// Notify the editor of the updated properties.
+			editorContext.notifyPropertiesChanged();
+		}
+	);
+
+	CustomG4Fields.newEnvironmentSettingsField(
+		container,
+		"G4™ Environment Settings",
+		"Provide G4™ environment settings to configure the automation.",
+		definition.properties['environmentSettings'],
+		(value) => {
+			// Ensure the "environmentSettings" property exists in the definition.
+			definition.properties['environmentSettings'] = definition.properties['environmentSettings'] || {};
+			
+			// Update the "authentication" property with the new values from the input.
+			for (const key of Object.keys(value)) {
+				definition.properties['environmentSettings'][key] = value[key];
+			}
+
+			// Notify the editor of the updated properties.
+			editorContext.notifyPropertiesChanged();
+		}
+	);
+
+	CustomG4Fields.newExceptionsSettingsField(
+		container,
+		"G4™ Exceptions Settings",
+		"Provide G4™ exceptions settings to configure the automation.",
+		definition.properties['exceptionsSettings'],
+		(value) => {
+			// Ensure the "exceptionsSettings" property exists in the definition.
+			definition.properties['exceptionsSettings'] = definition.properties['exceptionsSettings'] || {};
+			
+			// Update the "exceptionsSettings" property with the new values from the input.
+			for (const key of Object.keys(value)) {
+				definition.properties['exceptionsSettings'][key] = value[key];
 			}
 
 			// Notify the editor of the updated properties.

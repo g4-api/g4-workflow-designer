@@ -526,6 +526,117 @@ class CustomG4Fields {
         // Return the field container for further manipulation if needed.
         return container;
     }
+
+    /**
+     * Creates and appends a new Environment Settings field to the specified container.
+     *
+     * This field includes sub-fields for Default Environment, Return Environment, and Environment Variables,
+     * allowing users to configure environment-related settings for automation requests.
+     *
+     * @param {HTMLElement} container    - The parent element to which the environment settings field will be appended.
+     * @param {string}      label        - The identifier for the environment settings field, expected in PascalCase format.
+     * @param {string}      title        - The title attribute for the field container, typically used for tooltips.
+     * @param {Object}      initialValue - An object containing initial values for the environment settings.
+     * @param {Function}    setCallback  - A callback function invoked whenever any of the environment settings change.
+     * @returns {HTMLElement} - The parent container with the appended environment settings field.
+     */
+    static newEnvironmentSettingsField(container, label, title, initialValue, setCallback) {
+        // Generate a unique identifier for the environment settings fields.
+        const inputId = newUid();
+
+        // Escape the unique identifier to ensure it's safe for use in CSS selectors.
+        const escapedId = CSS.escape(inputId);
+
+        // Create a container with multiple environment settings fields using the provided ID, label, and title.
+        const fieldContainer = newMultipleFieldsContainer(inputId, label, title);
+
+        // Select the controller sub-container within the field container using the escaped unique ID.
+        const controller = fieldContainer.querySelector(`#${escapedId}-controller`);
+
+        // Create a new string field for Default Environment.
+        CustomFields.newStringField(
+            controller,
+            {},
+            'DefaultEnvironment',
+            'The default environment to use for automation requests.',
+            initialValue?.defaultEnvironment || 'SystemParameters',
+            false,
+            (value) => {
+                const environmentSettings = {
+                    defaultEnvironment: value
+                };
+                setCallback(environmentSettings);
+            }
+        );
+
+        // Create a new switch field for Return Environment.
+        CustomFields.newSwitchField(
+            controller,
+            'ReturnEnvironment',
+            'Indicates whether the environment should be returned in the response.',
+            initialValue?.returnEnvironment || false,
+            (value) => {
+                const environmentSettings = {
+                    returnEnvironment: convertStringToBool(value)
+                };
+                setCallback(environmentSettings);
+            }
+        );
+
+        // Create a new key-value field for Environment Variables.
+        CustomFields.newKeyValueField(
+            controller,
+            "EnvironmentVariables",
+            "A list of static environment variables to use for automation requests.",
+            initialValue?.environmentVariables || {},
+            (value) => {
+                const environmentSettings = {
+                    environmentVariables: value
+                };
+                setCallback(environmentSettings);
+            }
+        );
+
+        // Append the fully constructed environment settings field container to the provided parent container in the DOM.
+        container.appendChild(fieldContainer);
+
+        // Return the parent container with the appended environment settings field for further manipulation if needed.
+        return container;
+    }
+
+    static newExceptionsSettingsField(container, label, title, initialValue, setCallback) {
+        // Generate a unique identifier for the environment settings fields.
+        const inputId = newUid();
+
+        // Escape the unique identifier to ensure it's safe for use in CSS selectors.
+        const escapedId = CSS.escape(inputId);
+
+        // Create a container with multiple environment settings fields using the provided ID, label, and title.
+        const fieldContainer = newMultipleFieldsContainer(inputId, label, title);
+
+        // Select the controller sub-container within the field container using the escaped unique ID.
+        const controller = fieldContainer.querySelector(`#${escapedId}-controller`);
+
+        // Create a new switch field for Return Environment.
+        CustomFields.newSwitchField(
+            controller,
+            'ReturnExceptions',
+            'Indicates whether the exceptions should be returned in the response.',
+            initialValue?.returnExceptions || false,
+            (value) => {
+                const exceptionsSettings = {
+                    returnExceptions: convertStringToBool(value)
+                };
+                setCallback(exceptionsSettings);
+            }
+        );
+
+        // Append the fully constructed environment settings field container to the provided parent container in the DOM.
+        container.appendChild(fieldContainer);
+
+        // Return the parent container with the appended environment settings field for further manipulation if needed.
+        return container;
+    }
 }
 
 class CustomFields {
