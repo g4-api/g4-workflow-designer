@@ -162,7 +162,8 @@ const newFieldContainer = (id, labelDisplayName, hintText) => {
  * automation fields. It includes a controller sub-container, which is designated by the
  * `g4-role="controller"` attribute. The main container is marked with `g4-role="field"`.
  *
- * @param {string} id - A unique identifier used to assign IDs to the field and controller containers.
+ * @param {string} id   - A unique identifier used to assign IDs to the field and controller containers.
+ * @param {string} role - The role of the container
  * @returns {HTMLDivElement} - The constructed field container element containing the controller.
  *
  * @example
@@ -173,7 +174,7 @@ const newFieldContainer = (id, labelDisplayName, hintText) => {
  * //   <div g4-role="controller" id="uniqueId123-controller"></div>
  * // </div>
  */
-const newUnlabeledFieldContainer = (id) => {
+const newUnlabeledFieldContainer = (id, role) => {
     // Create the main field container div element.
     const fieldContainer = document.createElement('div');
 
@@ -187,10 +188,10 @@ const newUnlabeledFieldContainer = (id) => {
     fieldContainer.id = `${id}-field`;
 
     // Set the custom attribute 'g4-role' to 'controller' for the controller container.
-    controllerContainer.setAttribute('g4-role', 'controller');
+    controllerContainer.setAttribute('g4-role', role || 'controller');
 
     // Assign a unique ID to the controller container using the provided 'id'.
-    controllerContainer.id = `${id}-controller`;
+    controllerContainer.id = `${id}-${role || 'controller'}`;
 
     // Append the controller container as a child of the main field container.
     fieldContainer.appendChild(controllerContainer);
@@ -209,6 +210,7 @@ const newUnlabeledFieldContainer = (id) => {
  * @param {string} id               - A unique identifier used to assign IDs to the field container and its controller.
  * @param {string} labelDisplayName - The text to display in the summary section, serving as the label for the container.
  * @param {string} hintText         - The tooltip text that appears when hovering over the summary label.
+ * @param {string} role             - The role of the container
  * @returns {HTMLDetailsElement} - The constructed `details` container element containing the summary and field container.
  *
  * @example
@@ -224,35 +226,138 @@ const newUnlabeledFieldContainer = (id) => {
  * //   </div>
  * // </details>
  */
-const newMultipleFieldsContainer = (id, labelDisplayName, hintText) => {
+const newMultipleFieldsContainer = (id, labelDisplayName, hintText, role) => {
     // Create the main <details> container element.
     const detailsContainer = document.createElement('details');
 
     // Create the <summary> element that serves as the clickable label.
     const summaryContainer = document.createElement('summary');
 
-    // Create the content <div> that will hold the field container.
-    const contentContainer = document.createElement('div');
-
     // Create an unlabeled field container using the provided 'id'.
-    const fieldContainer = newUnlabeledFieldContainer(id);
+    const fieldContainer = newUnlabeledFieldContainer(id, role);
 
     // Set the display text of the summary label.
     summaryContainer.textContent = labelDisplayName;
 
     // Set the tooltip text for the summary label.
-    summaryContainer.title = hintText;
-
-    // Append the field container to the content area.
-    contentContainer.appendChild(fieldContainer);
+    summaryContainer.title = labelDisplayName;
 
     // Append the summary and content containers to the main <details> container.
     detailsContainer.appendChild(summaryContainer);
-    detailsContainer.appendChild(contentContainer);
+    detailsContainer.appendChild(fieldContainer);
 
     // Return the fully constructed <details> container.
     return detailsContainer;
 };
+
+const newObjectArrayFieldsContainer = (id, labelDisplayName, hintText, role, groupName, objectSchemas, setCallback) => {
+
+    const add = (container, groupName, fieldName, property, index, setCallback) => {
+        const type = property.type?.toLocaleUpperCase() || 'STRING';
+        const label = property?.label || 'NameNotAvailable';
+        const displayName = convertPascalToSpaceCase(property?.label || 'NameNotAvailable');
+        const title = property?.title || 'Help text not available';
+
+        switch (type) {
+            case 'STRING':
+                CustomFields.newStringField(container, {}, label, title, property.value, false, (value) => {
+                    const data = {};
+                    const normalizedGroupName = convertToCamelCase(groupName);
+                    const indexKey = `${index}`;
+
+                    data[normalizedGroupName] = data[normalizedGroupName] || {};
+                    data[normalizedGroupName][fieldName] = value;
+
+                    setCallback({
+                        [indexKey]: data
+                    });
+                });
+                break;
+            case 'NUMBER':
+                CustomFields.newNumberField(container, label, title, property.value, 1, false, (value) => {
+                    const data = {};
+                    const normalizedGroupName = convertToCamelCase(groupName);
+                    const indexKey = `${index}`;
+
+                    data[normalizedGroupName] = data[normalizedGroupName] || {};
+                    data[normalizedGroupName][fieldName] = value;
+
+                    setCallback({
+                        [indexKey]: data
+                    });
+                });
+                break;
+            case 'KEYVALUE':
+                CustomFields.newKeyValueField(container, label, title, property.value, (value) => {
+                    const data = {};
+                    const normalizedGroupName = convertToCamelCase(groupName);
+                    const indexKey = `${index}`;
+
+                    data[normalizedGroupName] = data[normalizedGroupName] || {};
+                    data[normalizedGroupName][fieldName] = value;
+
+                    setCallback({
+                        [indexKey]: data
+                    });
+                });
+                break;
+            default:
+                break;
+        }
+    }
+
+    const escapedId = CSS.escape(id);
+    const label = convertPascalToSpaceCase(groupName);
+    const fieldContainer = newMultipleFieldsContainer(id, labelDisplayName, hintText, role);
+
+    const controllerContainer = fieldContainer.querySelector(`#${escapedId}-container`);
+    const summaryContainer = fieldContainer.querySelector('summary');
+
+    const buttonController = document.createElement('button');
+    buttonController.type = 'button';
+    buttonController.textContent = `Add ${label}`;
+    buttonController.style = "margin-top: 1em;";
+    buttonController.addEventListener('click', () => add(controllerContainer, groupName, objectSchemas, setCallback));
+
+    const buttonContainer = document.createElement('div');
+    buttonContainer.classList.add('text-with-button');
+    buttonContainer.appendChild(buttonController);
+
+    summaryContainer.after(buttonContainer);
+
+
+    
+
+    for (let index = 0; index < objectSchemas.length; index++) {
+        const arrayContainer = newMultipleFieldsContainer(`${id}-${index}`, `External Repository ${index}`, "Foo Bar", "array-item-container");
+        const itemContainer = arrayContainer.querySelector(`[g4-role="array-item-container"]`);
+        const summaryContainer = arrayContainer.querySelector('summary');
+
+        const buttonController = document.createElement('button');
+        buttonController.type = 'button';
+        buttonController.textContent = `Remove`;
+        buttonController.style = "margin-top: 1em;";
+       // buttonController.addEventListener('click', () => add(controllerContainer, groupName, objectSchemas, setCallback));
+    
+        const buttonContainer = document.createElement('div');
+        buttonContainer.classList.add('text-with-button');
+        buttonContainer.appendChild(buttonController);
+    
+        summaryContainer.after(buttonContainer);
+
+
+        const objectSchema = objectSchemas[index];
+        const keys = Object.keys(objectSchema);
+
+        for (const key of keys) {
+            const property = objectSchema[key];
+            add(itemContainer, groupName, key, property, index, setCallback);
+        }
+        controllerContainer.appendChild(arrayContainer);
+    }
+
+    return fieldContainer;
+}
 
 /**
  * Generates a `<style>` block containing CSS styles scoped to a specific element by ID.
@@ -355,10 +460,10 @@ class CustomG4Fields {
         const id = CSS.escape(inputId);
 
         // Create a container with multiple fields (e.g., username and password) using the provided ID, label, and title.
-        const fieldContainer = newMultipleFieldsContainer(inputId, label, title);
+        const fieldContainer = newMultipleFieldsContainer(inputId, label, title, 'container');
 
         // Select the controller sub-container within the field container using the unique ID.
-        const controller = fieldContainer.querySelector(`#${id}-controller`);
+        const controller = fieldContainer.querySelector(`#${id}-container`);
 
         // Create a new string input field for the "Username" with an empty initial value or the provided initial username.
         CustomFields.newStringField(
@@ -438,10 +543,10 @@ class CustomG4Fields {
         const id = CSS.escape(inputId);
 
         // Create a container with multiple fields using the provided ID, label, and title.
-        const fieldContainer = newMultipleFieldsContainer(inputId, label, title);
+        const fieldContainer = newMultipleFieldsContainer(inputId, label, title, 'container');
 
         // Select the controller sub-container within the field container using the unique ID.
-        const controller = fieldContainer.querySelector(`#${id}-controller`);
+        const controller = fieldContainer.querySelector(`#${id}-container`);
 
         // Create a new number input field for the "LoadTimeout".
         CustomFields.newNumberField(
@@ -548,10 +653,10 @@ class CustomG4Fields {
         const escapedId = CSS.escape(inputId);
 
         // Create a container with multiple environment settings fields using the provided ID, label, and title.
-        const fieldContainer = newMultipleFieldsContainer(inputId, label, title);
+        const fieldContainer = newMultipleFieldsContainer(inputId, label, title, 'container');
 
         // Select the controller sub-container within the field container using the escaped unique ID.
-        const controller = fieldContainer.querySelector(`#${escapedId}-controller`);
+        const controller = fieldContainer.querySelector(`#${escapedId}-container`);
 
         // Create a new string field for Default Environment.
         CustomFields.newStringField(
@@ -604,20 +709,33 @@ class CustomG4Fields {
         return container;
     }
 
+    /**
+     * Creates and appends a new Exceptions Settings field to the specified container.
+     *
+     * This field includes a sub-field for Return Exceptions, allowing users to configure
+     * whether exceptions should be returned in the response for automation requests.
+     *
+     * @param {HTMLElement} container    - The parent element to which the exceptions settings field will be appended.
+     * @param {string}      label        - The identifier for the exceptions settings field, expected in PascalCase format.
+     * @param {string}      title        - The title attribute for the field container, typically used for tooltips.
+     * @param {Object}      initialValue - An object containing initial values for the exceptions settings.
+     * @param {Function}    setCallback  - A callback function invoked whenever the exceptions settings change.
+     * @returns {HTMLElement} - The parent container with the appended exceptions settings field.
+     */
     static newExceptionsSettingsField(container, label, title, initialValue, setCallback) {
-        // Generate a unique identifier for the environment settings fields.
+        // Generate a unique identifier for the exceptions settings fields.
         const inputId = newUid();
 
         // Escape the unique identifier to ensure it's safe for use in CSS selectors.
         const escapedId = CSS.escape(inputId);
 
-        // Create a container with multiple environment settings fields using the provided ID, label, and title.
-        const fieldContainer = newMultipleFieldsContainer(inputId, label, title);
+        // Create a container with multiple exceptions settings fields using the provided ID, label, and title.
+        const fieldContainer = newMultipleFieldsContainer(inputId, label, title, 'container');
 
         // Select the controller sub-container within the field container using the escaped unique ID.
-        const controller = fieldContainer.querySelector(`#${escapedId}-controller`);
+        const controller = fieldContainer.querySelector(`#${escapedId}-container`);
 
-        // Create a new switch field for Return Environment.
+        // Create a new switch field for Return Exceptions.
         CustomFields.newSwitchField(
             controller,
             'ReturnExceptions',
@@ -631,10 +749,216 @@ class CustomG4Fields {
             }
         );
 
-        // Append the fully constructed environment settings field container to the provided parent container in the DOM.
+        // Append the fully constructed exceptions settings field container to the provided parent container in the DOM.
         container.appendChild(fieldContainer);
 
-        // Return the parent container with the appended environment settings field for further manipulation if needed.
+        // Return the parent container with the appended exceptions settings field for further manipulation if needed.
+        return container;
+    }
+
+    /**
+     * Creates and appends a new Queue Manager Settings field to the specified container.
+     *
+     * This field includes sub-fields for Type and Properties, allowing users to configure
+     * queue manager-related settings for automation requests.
+     *
+     * @param {HTMLElement} container    - The parent element to which the queue manager settings field will be appended.
+     * @param {string}      label        - The identifier for the queue manager settings field, expected in PascalCase format.
+     * @param {string}      title        - The title attribute for the field container, typically used for tooltips.
+     * @param {Object}      initialValue - An object containing initial values for the queue manager settings.
+     * @param {Function}    setCallback  - A callback function invoked whenever any of the queue manager settings change.
+     * @returns {HTMLElement} - The parent container with the appended queue manager settings field.
+     */
+    static newQueueManagerSettingsField(container, label, title, initialValue, setCallback) {
+        // Generate a unique identifier for the queue manager settings fields.
+        const inputId = newUid();
+
+        // Escape the unique identifier to ensure it's safe for use in CSS selectors.
+        const escapedId = CSS.escape(inputId);
+
+        // Create a container with multiple queue manager settings fields using the provided ID, label, and title.
+        const fieldContainer = newMultipleFieldsContainer(inputId, label, title, 'container');
+
+        // Select the controller sub-container within the field container using the escaped unique ID.
+        const controller = fieldContainer.querySelector(`#${escapedId}-container`);
+
+        // Create a new string input field for the "Type" with an empty initial value or the provided initial type.
+        CustomFields.newStringField(
+            controller,
+            {},
+            'Type',
+            'Specifies the type of the queue manager.',
+            initialValue?.type || '',
+            false,
+            (value) => {
+                const queueManagerSettings = {
+                    type: value
+                };
+                setCallback(queueManagerSettings);
+            }
+        );
+
+        // Create a new key-value field for Properties.
+        CustomFields.newKeyValueField(
+            controller,
+            "Properties",
+            "Additional properties for the queue manager.",
+            initialValue?.properties || {},
+            (value) => {
+                const queueManagerSettings = {
+                    properties: value
+                };
+                setCallback(queueManagerSettings);
+            }
+        );
+
+        // Append the fully constructed queue manager settings field container to the provided parent container in the DOM.
+        container.appendChild(fieldContainer);
+
+        // Return the parent container with the appended queue manager settings field for further manipulation if needed.
+        return container;
+    }
+
+    /**
+     * Creates and appends a new Performance Points Settings field to the specified container.
+     *
+     * This field includes a sub-field for Return Performance Points, allowing users to configure
+     * whether performance points should be returned in the response for automation requests.
+     *
+     * @param {HTMLElement} container    - The parent element to which the performance points settings field will be appended.
+     * @param {string}      label        - The identifier for the performance points settings field, expected in PascalCase format.
+     * @param {string}      title        - The title attribute for the field container, typically used for tooltips.
+     * @param {Object}      initialValue - An object containing initial values for the performance points settings.
+     * @param {Function}    setCallback  - A callback function invoked whenever the performance points settings change.
+     * @returns {HTMLElement} - The parent container with the appended performance points settings field.
+     */
+    static newPerformancePointsSettingsField(container, label, title, initialValue, setCallback) {
+        // Generate a unique identifier for the performance points settings fields.
+        const inputId = newUid();
+
+        // Escape the unique identifier to ensure it's safe for use in CSS selectors.
+        const escapedId = CSS.escape(inputId);
+
+        // Create a container with multiple performance points settings fields using the provided ID, label, and title.
+        const fieldContainer = newMultipleFieldsContainer(inputId, label, title, 'container');
+
+        // Select the controller sub-container within the field container using the escaped unique ID.
+        const controller = fieldContainer.querySelector(`#${escapedId}-container`);
+
+        // Create a new switch field for Return Performance Points.
+        CustomFields.newSwitchField(
+            controller,
+            'ReturnPerformancePoints',
+            'Indicates whether the performance points should be returned in the response.',
+            initialValue?.returnPerformancePoints || false,
+            (value) => {
+                const performancePointsSettings = {
+                    returnPerformancePoints: convertStringToBool(value)
+                };
+                setCallback(performancePointsSettings);
+            }
+        );
+
+        // Append the fully constructed performance points settings field container to the provided parent container in the DOM.
+        container.appendChild(fieldContainer);
+
+        // Return the parent container with the appended performance points settings field for further manipulation if needed.
+        return container;
+    }
+
+    static newPluginsSettingsField(container, label, title, initialValue, setCallback) {
+        const newObjectSchema = (externalRepository) => {
+            const schema = {};
+            schema['url'] = {
+                label: 'Url',
+                title: 'The URL of the external repository.',
+                type: 'STRING',
+                value: externalRepository?.url || ''
+            }
+
+            schema['version'] = {
+                label: 'Version',
+                title: 'The API version of the external repository.',
+                type: 'NUMBER',
+                value: externalRepository?.version || ''
+            }
+
+            schema['name'] = {
+                label: 'Name',
+                title: 'The name of the external repository.',
+                type: 'STRING',
+                value: externalRepository?.name || ''
+
+            }
+
+            schema['username'] = {
+                label: 'Username',
+                title: 'The username to authenticate with the external repository.',
+                type: 'STRING',
+                value: externalRepository?.username || ''
+
+            }
+
+            schema['password'] = {
+                label: 'Password',
+                title: 'The password to authenticate with the external repository.',
+                type: 'STRING',
+                value: externalRepository?.password || ''
+
+            }
+
+            schema['timeout'] = {
+                label: 'Timeout',
+                title: 'The time in seconds to wait before the request times out (default 300 seconds).',
+                type: 'NUMBER',
+                value: externalRepository?.timeout || '300'
+            }
+
+            schema['headers'] = {
+                label: 'Headers',
+                title: 'A collection of headers to be included in the request.',
+                type: 'KEYVALUE',
+                value: externalRepository?.headers || {}
+            }
+
+
+            schema['capabilities'] = {
+                label: 'Capabilities',
+                title: 'A collection of capabilities with additional custom information for the invocation.',
+                type: 'KEYVALUE',
+                value: externalRepository?.capabilities || {}
+
+            }
+
+            return schema;
+        };
+
+        // Generate a unique identifier for the performance points settings fields.
+        const inputId = newUid();
+
+        // Escape the unique identifier to ensure it's safe for use in CSS selectors.
+        const escapedId = CSS.escape(inputId);
+
+        // Create a container with multiple performance points settings fields using the provided ID, label, and title.
+        const externalRepositories = initialValue?.externalRepositories || [
+            {}
+        ];
+        const data = [];
+        const indexes = Object.keys(externalRepositories);
+        for (const index of indexes) {
+            const schema = newObjectSchema(externalRepositories[index]);
+            data.push(schema);
+        }
+
+        const fieldContainer = newObjectArrayFieldsContainer(inputId, label, title, 'container', 'ExternalRepositories', data, setCallback);
+
+        // Select the controller sub-container within the field container using the escaped unique ID.
+        const controller = fieldContainer.querySelector(`#${escapedId}-container`);
+
+        // Append the fully constructed performance points settings field container to the provided parent container in the DOM.
+        container.appendChild(fieldContainer);
+
+        // Return the parent container with the appended performance points settings field for further manipulation if needed.
         return container;
     }
 }
