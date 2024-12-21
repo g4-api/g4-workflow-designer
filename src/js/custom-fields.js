@@ -2063,7 +2063,7 @@ class CustomFields {
      * @param {string}      subTitleText - The subtitle text to be displayed within a `<span>` element with the class "subtitle".
      * @param {string}      helpText     - The help text to be displayed when the desiner opens.
      */
-    static newTitle(container, titleText, subTitleText, helpText) {
+    static newTitle(options) {
         /**
          * Toggles a hint text element inside a specified container.
          * If the hint text element already exists, it is removed. Otherwise, a new one is created and added.
@@ -2091,7 +2091,7 @@ class CustomFields {
         };
 
         // Set default values for the subtitle and help text if not provided.
-        helpText = helpText || 'Help text not provided.';
+        options.helpText = options.helpText || 'Help text not provided.';
 
         // Create a new paragraph element to contain the title and subtitle
         const titleContainer = document.createElement('div');
@@ -2099,14 +2099,14 @@ class CustomFields {
 
         // Set the inner HTML of the title container with an <h2> for the main title and a <span> for the subtitle
         const html = `
-            <h2 style="display: flex;align-items: center;justify-content: space-between;">${titleText}
+            <h2 style="display: flex;align-items: center;justify-content: space-between;">${options.titleText}
                 <span class="hint-icon-container" tabindex="0" title="More Information" role="img" aria-label="More Information">
                     <svg viewBox="0 -960 960 960" class="hint-icon" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                         <path d="M419-334q1-87 20.5-129t65.5-76q39-31 57.5-61.109T581-666q0-39-25.5-64.5T486-756q-46 0-75 26t-43 67l-120-52q27-74 87-120.5T485.756-882q109.228 0 168.236 62.148Q713-757.703 713-669q0 60-21 105.5T625-478q-46 40-57 65.5T557-334H419Zm66.788 282Q447-52 420-79t-27-65.496q0-38.495 26.92-65.5Q446.841-237 485.92-237 525-237 552-209.996q27 27.005 27 65.5Q579-106 551.788-79q-27.213 27-66 27Z"></path>
                     </svg>
                 </span>
             </h2>
-            <span class="subtitle">${subTitleText}</span>
+            <span class="subtitle">${options.subTitleText}</span>
             
             <div g4-role="summary"></div>`;
 
@@ -2120,12 +2120,14 @@ class CustomFields {
         const hintContainer = titleContainer.querySelector('[g4-role="summary"]');
 
         // Add event listener to the icon element to toggle the hint text
-        iconElement.addEventListener('click', () => switchHint(hintContainer, helpText));
+        iconElement.addEventListener('click', () => switchHint(hintContainer, options.helpText));
 
         // Append the populated title container to the provided parent container
-        container.appendChild(titleContainer);
+        if (options.container) {
+            options.container.appendChild(titleContainer);
+        }
 
         // Return the container for potential further use by the calling code
-        return container;
+        return options.container ? options.container : titleContainer;
     }
 }

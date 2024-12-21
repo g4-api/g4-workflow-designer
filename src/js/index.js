@@ -298,7 +298,12 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 	container.setAttribute("g4-role", "root-editor");
 
 	// Add a title to the container to indicate the configuration section.
-	CustomFields.newTitle(container, 'Automation Settings', 'Flow Configuration');
+	CustomFields.newTitle({
+		container: container,
+		helpText: 'Configure the automation settings for the flow.',
+		subTitleText: 'Flow Configuration',
+		titleText: 'Automation Settings'
+	});
 
 	// Add a string input field for configuring the "Invocation Interval".
 	CustomFields.newStringField(
@@ -459,7 +464,7 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 				const property = value[index];
 
 				// If the property is not an object, set the pluginsSettings to the property
-				if(!assertObject(property)) {
+				if (!assertObject(property)) {
 					pluginsSettings[index] = property;
 					continue;
 				}
@@ -467,7 +472,7 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 				// If the property is null or undefined, delete the property from the definition
 				// This is done to ensure that the property is not set to null or undefined
 				// as it would be set to null or undefined in the definition
-				if(!property) {
+				if (!property) {
 					delete value[index];
 					continue;
 				}
