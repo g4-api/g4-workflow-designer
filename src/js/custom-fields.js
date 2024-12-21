@@ -1949,7 +1949,7 @@ class CustomFields {
         }
 
         // If a callback function is provided, add an event listener to handle input events.
-        if (setCallback) {
+        if (typeof setCallback === 'function') {
             fieldContainer.addEventListener('input', () => {
                 // Update the title attribute to reflect the current value of the textarea.
                 textareaElement.title = textareaElement.value;
@@ -2030,7 +2030,7 @@ class CustomFields {
          * - Updates the `title` attribute of the select to reflect its current value.
          * - Invokes the `setCallback` function with the new value whenever the selection changes.
          */
-        if (setCallback) {
+        if (typeof setCallback === 'function') {
             fieldContainer.addEventListener('input', () => {
                 select.title = select.value;
                 setCallback(select.value);
@@ -2123,7 +2123,7 @@ class CustomFields {
          * - Updates the `title` attribute of the input to reflect its current value.
          * - Invokes the `setCallback` function with the new value whenever the input changes.
          */
-        if (setCallback) {
+        if (typeof setCallback === 'function') {
             fieldContainer.addEventListener('input', () => {
                 input.title = input.value;
                 setCallback(input.value);
