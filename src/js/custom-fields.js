@@ -1097,6 +1097,23 @@ class CustomG4Fields {
         // Create the object array fields container with the provided options and callback.
         const fieldContainer = newObjectArrayFieldsContainer(inputId, options, setCallback);
 
+        // Set the initial forceRuleReference value to true if not provided. 
+        const forceRuleReference = initialValue?.forceRuleReference === null || initialValue?.forceRuleReference === undefined ? true : initialValue?.forceRuleReference;
+
+        // Append new switch field for ForceRuleReference.
+        CustomFields.newSwitchField(
+            fieldContainer,
+            'ForceRuleReference',
+            'Indicating whether rule references should be forced when reused across different jobs. When set to `true` (the default), a new copy of the rule with a new reference will be created for each job where the rule is reused.',
+            forceRuleReference,
+            (value) => {
+                const pluginsSettings = {
+                    forceRuleReference: convertStringToBool(value)
+                };
+                setCallback(pluginsSettings);
+            }
+        );
+
         // Append the fully constructed plugins settings field container to the provided parent container in the DOM.
         container.appendChild(fieldContainer);
 

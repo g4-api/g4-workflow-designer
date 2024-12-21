@@ -300,140 +300,140 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 	// Add a title to the container to indicate the configuration section.
 	CustomFields.newTitle(container, 'Automation Settings', 'Flow Configuration');
 
-	// // Add a string input field for configuring the "Invocation Interval".
-	// CustomFields.newStringField(
-	// 	container,
-	// 	definition,                            // The automation definition object.
-	// 	'Invocation Interval (ms)',            // Label for the input field.
-	// 	'Time between each action invocation', // Description tooltip for the input field.
-	// 	definition.properties['speed'],        // Current value of the "speed" property.
-	// 	isReadonly,                            // Flag to set the field as read-only if true.
-	// 	(value) => {
-	// 		// Update the "speed" property with the new value from the input.
-	// 		definition.properties['speed'] = parseInt(value, 10); // Ensure the value is an integer.
-	// 		editorContext.notifyPropertiesChanged();
-	// 	}
-	// );
+	// Add a string input field for configuring the "Invocation Interval".
+	CustomFields.newStringField(
+		container,
+		definition,                            // The automation definition object.
+		'Invocation Interval (ms)',            // Label for the input field.
+		'Time between each action invocation', // Description tooltip for the input field.
+		definition.properties['speed'],        // Current value of the "speed" property.
+		isReadonly,                            // Flag to set the field as read-only if true.
+		(value) => {
+			// Update the "speed" property with the new value from the input.
+			definition.properties['speed'] = parseInt(value, 10); // Ensure the value is an integer.
+			editorContext.notifyPropertiesChanged();
+		}
+	);
 
-	// // Add an authentication field for providing G4 credentials to allow automation requests.
-	// CustomG4Fields.newAuthenticationField(
-	// 	container,
-	// 	"G4™ Authentication",                                    // Label for the authentication section.
-	// 	"Provide G4™ credentials to allow automation requests.", // Description tooltip for the authentication section.
-	// 	definition.properties['authentication'],                 // Current value of the "authentication" property.
-	// 	(value) => {
-	// 		// Ensure the "authentication" property exists in the definition.
-	// 		definition.properties['authentication'] = definition.properties['authentication'] || {};
+	// Add an authentication field for providing G4 credentials to allow automation requests.
+	CustomG4Fields.newAuthenticationField(
+		container,
+		"G4™ Authentication",                                    // Label for the authentication section.
+		"Provide G4™ credentials to allow automation requests.", // Description tooltip for the authentication section.
+		definition.properties['authentication'],                 // Current value of the "authentication" property.
+		(value) => {
+			// Ensure the "authentication" property exists in the definition.
+			definition.properties['authentication'] = definition.properties['authentication'] || {};
 
-	// 		// Update the "authentication" property with the new values from the input.
-	// 		for (const key of Object.keys(value)) {
-	// 			definition.properties['authentication'][key] = value[key];
-	// 		}
+			// Update the "authentication" property with the new values from the input.
+			for (const key of Object.keys(value)) {
+				definition.properties['authentication'][key] = value[key];
+			}
 
-	// 		// Notify the editor of the updated properties.
-	// 		editorContext.notifyPropertiesChanged();
-	// 	}
-	// );
+			// Notify the editor of the updated properties.
+			editorContext.notifyPropertiesChanged();
+		}
+	);
 
-	// // Add an automation settings field for configuring the automation settings.
-	// CustomG4Fields.newAutomationSettingsField(
-	// 	container,
-	// 	"G4™ Automation Settings",
-	// 	"Provide G4™ automation settings to configure the automation.",
-	// 	definition.properties['automationSettings'],
-	// 	(value) => {
-	// 		// Ensure the "automationSettings" property exists in the definition.
-	// 		definition.properties['automationSettings'] = definition.properties['automationSettings'] || {};
+	// Add an automation settings field for configuring the automation settings.
+	CustomG4Fields.newAutomationSettingsField(
+		container,
+		"G4™ Automation Settings",
+		"Provide G4™ automation settings to configure the automation.",
+		definition.properties['automationSettings'],
+		(value) => {
+			// Ensure the "automationSettings" property exists in the definition.
+			definition.properties['automationSettings'] = definition.properties['automationSettings'] || {};
 
-	// 		// Update the "automationSettings" property with the new values from the input.
-	// 		for (const key of Object.keys(value)) {
-	// 			definition.properties['automationSettings'][key] = value[key];
-	// 		}
+			// Update the "automationSettings" property with the new values from the input.
+			for (const key of Object.keys(value)) {
+				definition.properties['automationSettings'][key] = value[key];
+			}
 
-	// 		// Notify the editor of the updated properties.
-	// 		editorContext.notifyPropertiesChanged();
-	// 	}
-	// );
+			// Notify the editor of the updated properties.
+			editorContext.notifyPropertiesChanged();
+		}
+	);
 
-	// // Add an environment settings field for configuring the G4 environment settings.
-	// CustomG4Fields.newEnvironmentSettingsField(
-	// 	container,
-	// 	"G4™ Environment Settings",
-	// 	"Provide G4™ environment settings to configure the automation.",
-	// 	definition.properties['environmentSettings'],
-	// 	(value) => {
-	// 		// Ensure the "environmentSettings" property exists in the definition.
-	// 		definition.properties['environmentSettings'] = definition.properties['environmentSettings'] || {};
+	// Add an environment settings field for configuring the G4 environment settings.
+	CustomG4Fields.newEnvironmentSettingsField(
+		container,
+		"G4™ Environment Settings",
+		"Provide G4™ environment settings to configure the automation.",
+		definition.properties['environmentSettings'],
+		(value) => {
+			// Ensure the "environmentSettings" property exists in the definition.
+			definition.properties['environmentSettings'] = definition.properties['environmentSettings'] || {};
 
-	// 		// Update the "authentication" property with the new values from the input.
-	// 		for (const key of Object.keys(value)) {
-	// 			definition.properties['environmentSettings'][key] = value[key];
-	// 		}
+			// Update the "authentication" property with the new values from the input.
+			for (const key of Object.keys(value)) {
+				definition.properties['environmentSettings'][key] = value[key];
+			}
 
-	// 		// Notify the editor of the updated properties.
-	// 		editorContext.notifyPropertiesChanged();
-	// 	}
-	// );
+			// Notify the editor of the updated properties.
+			editorContext.notifyPropertiesChanged();
+		}
+	);
 
-	// // Add an exceptions settings field for configuring the G4 exceptions settings.
-	// CustomG4Fields.newExceptionsSettingsField(
-	// 	container,
-	// 	"G4™ Exceptions Settings",
-	// 	"Provide G4™ exceptions settings to configure the automation.",
-	// 	definition.properties['exceptionsSettings'],
-	// 	(value) => {
-	// 		// Ensure the "exceptionsSettings" property exists in the definition.
-	// 		definition.properties['exceptionsSettings'] = definition.properties['exceptionsSettings'] || {};
+	// Add an exceptions settings field for configuring the G4 exceptions settings.
+	CustomG4Fields.newExceptionsSettingsField(
+		container,
+		"G4™ Exceptions Settings",
+		"Provide G4™ exceptions settings to configure the automation.",
+		definition.properties['exceptionsSettings'],
+		(value) => {
+			// Ensure the "exceptionsSettings" property exists in the definition.
+			definition.properties['exceptionsSettings'] = definition.properties['exceptionsSettings'] || {};
 
-	// 		// Update the "exceptionsSettings" property with the new values from the input.
-	// 		for (const key of Object.keys(value)) {
-	// 			definition.properties['exceptionsSettings'][key] = value[key];
-	// 		}
+			// Update the "exceptionsSettings" property with the new values from the input.
+			for (const key of Object.keys(value)) {
+				definition.properties['exceptionsSettings'][key] = value[key];
+			}
 
-	// 		// Notify the editor of the updated properties.
-	// 		editorContext.notifyPropertiesChanged();
-	// 	}
-	// );
+			// Notify the editor of the updated properties.
+			editorContext.notifyPropertiesChanged();
+		}
+	);
 
-	// // Add a queue manager settings field for configuring the G4 queue manager settings.
-	// CustomG4Fields.newQueueManagerSettingsField(
-	// 	container,
-	// 	"G4™ Queue Manager Settings",
-	// 	"Provide G4™ queue manager settings to configure the automation.",
-	// 	definition.properties['queueManagerSettings'],
-	// 	(value) => {
-	// 		// Ensure the "queueManagerSettings" property exists in the definition.
-	// 		definition.properties['queueManagerSettings'] = definition.properties['queueManagerSettings'] || {};
+	// Add a queue manager settings field for configuring the G4 queue manager settings.
+	CustomG4Fields.newQueueManagerSettingsField(
+		container,
+		"G4™ Queue Manager Settings",
+		"Provide G4™ queue manager settings to configure the automation.",
+		definition.properties['queueManagerSettings'],
+		(value) => {
+			// Ensure the "queueManagerSettings" property exists in the definition.
+			definition.properties['queueManagerSettings'] = definition.properties['queueManagerSettings'] || {};
 
-	// 		// Update the "queueManagerSettings" property with the new values from the input.
-	// 		for (const key of Object.keys(value)) {
-	// 			definition.properties['queueManagerSettings'][key] = value[key];
-	// 		}
+			// Update the "queueManagerSettings" property with the new values from the input.
+			for (const key of Object.keys(value)) {
+				definition.properties['queueManagerSettings'][key] = value[key];
+			}
 
-	// 		// Notify the editor of the updated properties.
-	// 		editorContext.notifyPropertiesChanged();
-	// 	}
-	// );
+			// Notify the editor of the updated properties.
+			editorContext.notifyPropertiesChanged();
+		}
+	);
 
-	// // Add a performance points settings field for configuring the G4 performance points settings.
-	// CustomG4Fields.newPerformancePointsSettingsField(
-	// 	container,
-	// 	"G4™ Performance Points Settings",
-	// 	"Provide G4™ performance points settings to configure the automation.",
-	// 	definition.properties['performancePointsSettings'],
-	// 	(value) => {
-	// 		// Ensure the "performancePointsSettings" property exists in the definition.
-	// 		definition.properties['performancePointsSettings'] = definition.properties['performancePointsSettings'] || {};
+	// Add a performance points settings field for configuring the G4 performance points settings.
+	CustomG4Fields.newPerformancePointsSettingsField(
+		container,
+		"G4™ Performance Points Settings",
+		"Provide G4™ performance points settings to configure the automation.",
+		definition.properties['performancePointsSettings'],
+		(value) => {
+			// Ensure the "performancePointsSettings" property exists in the definition.
+			definition.properties['performancePointsSettings'] = definition.properties['performancePointsSettings'] || {};
 
-	// 		// Update the "performancePointsSettings" property with the new values from the input.
-	// 		for (const key of Object.keys(value)) {
-	// 			definition.properties['performancePointsSettings'][key] = value[key];
-	// 		}
+			// Update the "performancePointsSettings" property with the new values from the input.
+			for (const key of Object.keys(value)) {
+				definition.properties['performancePointsSettings'][key] = value[key];
+			}
 
-	// 		// Notify the editor of the updated properties.
-	// 		editorContext.notifyPropertiesChanged();
-	// 	}
-	// );
+			// Notify the editor of the updated properties.
+			editorContext.notifyPropertiesChanged();
+		}
+	);
 
 	// Add a plugins settings field for configuring the G4 plugins settings.
 	CustomG4Fields.newPluginsSettingsField(
@@ -450,12 +450,19 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 
 			// Reference to the current plugins settings
 			const pluginsSettings = definition.properties['pluginsSettings'];
+
 			// Get all keys from the incoming value
 			const indexes = Object.keys(value) || [];
 
 			// Iterate over each index in the incoming value
 			for (const index of indexes) {
 				const property = value[index];
+
+				// If the property is not an object, set the pluginsSettings to the property
+				if(!assertObject(property)) {
+					pluginsSettings[index] = property;
+					continue;
+				}
 
 				// If the property is null or undefined, delete the property from the definition
 				// This is done to ensure that the property is not set to null or undefined

@@ -10,6 +10,37 @@ function uid() {
 }
 
 /**
+ * Determines whether a given value is an object.
+ *
+ * This function checks if the provided value is an object, which includes
+ * objects, arrays, and functions. It explicitly excludes `null` and all
+ * primitive types such as boolean, number, string, symbol, bigint, and undefined.
+ *
+ * @param {*} value - The value to be checked.
+ * @returns {boolean} - Returns `true` if the value is an object, `false` if it's a primitive type.
+ *
+ * @example
+ * assertObject({});            // returns true
+ * assertObject([1, 2, 3]);     // returns true
+ * assertObject(function() {}); // returns true
+ * assertObject('Hello');       // returns false
+ * assertObject(42);            // returns false
+ * assertObject(true);          // returns false
+ * assertObject(null);          // returns false
+ * assertObject(undefined);     // returns false
+ */
+function assertObject(value) {
+    // Exclude `null` since `typeof null` returns 'object', but it's a primitive.
+    if (value === null) {
+        return false;
+    }
+
+    // Check if the type of the value is 'object' or 'function'.
+    // In JavaScript, functions are considered objects.
+    return (typeof value === 'object' || typeof value === 'function');
+}
+
+/**
  * Converts a given string to camelCase.
  *
  * The function processes the input string by:
