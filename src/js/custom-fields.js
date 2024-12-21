@@ -373,12 +373,13 @@ const newObjectArrayFieldsContainer = (id, options, setCallback) => {
         switch (type) {
             case 'STRING':
                 CustomFields.newStringField(
-                    container,
-                    {},
-                    label,
-                    title,
-                    mode === 'NEW' ? null : options.property.value,
-                    false,
+                    {
+                        container: container,
+                        initialValue: mode === 'NEW' ? null : options.property.value,
+                        isReadonly: false,
+                        label: label,
+                        title: title                        
+                    },
                     (value) => propertyCallback(value, setCallback)
                 );
                 break;
@@ -572,12 +573,13 @@ class CustomG4Fields {
 
         // Create a new string input field for the "Username" with an empty initial value or the provided initial username.
         CustomFields.newStringField(
-            controller,                                          // Parent element to append the username field.
-            {},
-            'Username',                                          // Label for the username input field.
-            'A valid G4™ username required for authentication.', // Description tooltip for the username input field.
-            initialValue?.username || '',                        // Initial value for the username field; defaults to an empty string if undefined.
-            false,                                               // Read-only flag; set to false to allow user input.
+            {
+                container: controller,
+                initialValue: initialValue?.username || '',
+                isReadonly: false,
+                label: 'Username',
+                title: 'A valid G4™ username required for authentication.'
+            },
             (value) => {
                 const authentication = {
                     username: value
@@ -588,12 +590,13 @@ class CustomG4Fields {
 
         // Create a new string input field for the "Password" with an empty initial value or the provided initial password.
         CustomFields.newStringField(
-            controller,                                          // Parent element to append the password field.
-            {},
-            'Password',                                          // Label for the password input field.
-            'A valid G4™ password required for authentication.', // Description tooltip for the password input field.
-            initialValue?.password || '',                        // Initial value for the password field; defaults to an empty string if undefined.
-            false,                                               // Read-only flag; set to false to allow user input.
+            {
+                container: controller,
+                initialValue: initialValue?.password || '',
+                isReadonly: false,
+                label: 'Password',
+                title: 'A valid G4™ password required for authentication.'
+            },
             (value) => {
                 const authentication = {
                     password: value
@@ -769,12 +772,13 @@ class CustomG4Fields {
 
         // Create a new string field for Default Environment.
         CustomFields.newStringField(
-            controller,
-            {},
-            'DefaultEnvironment',
-            'The default environment to use for automation requests.',
-            initialValue?.defaultEnvironment || 'SystemParameters',
-            false,
+            {
+                container: controller,
+                initialValue: initialValue?.defaultEnvironment || 'SystemParameters',
+                isReadonly: false,
+                label: 'DefaultEnvironment',
+                title: 'The default environment to use for automation requests.'
+            },
             (value) => {
                 const environmentSettings = {
                     defaultEnvironment: value
@@ -897,12 +901,14 @@ class CustomG4Fields {
 
         // Create a new string input field for the "Type" with an empty initial value or the provided initial type.
         CustomFields.newStringField(
-            controller,
-            {},
-            'Type',
-            'Specifies the type of the queue manager.',
-            initialValue?.type || '',
-            false,
+            {
+                container: controller,
+                initialValue: initialValue?.type || '',
+                isReadonly: false,
+                label: 'Type',
+                title: 'Specifies the type of the queue manager.'
+
+            },
             (value) => {
                 const queueManagerSettings = {
                     type: value
@@ -1842,30 +1848,20 @@ class CustomFields {
     }
 
     /**
-     * Creates and appends a labeled textarea field to a specified container.
+     * Creates and appends a new string input field (textarea) to the specified container based on provided options.
+     * The textarea dynamically adjusts its height based on content and invokes a callback with the current value upon input.
      *
-     * @param {HTMLElement} container    - The DOM element to which the textarea field will be appended.
-     * @param {number}      step         - A step identifier or index (usage depends on implementation context).
-     * @param {string}      label        - The label text for the textarea, typically in PascalCase.
-     * @param {string}      title        - The tooltip text that appears when hovering over the textarea.
-     * @param {string}      initialValue - The initial content/value of the textarea.
-     * @param {boolean}     isReadonly   - Determines if the textarea should be read-only.
-     * @param {Function}    setCallback  - A callback function invoked whenever the textarea's value changes.
+     * @param {Object}        options                    - Configuration options for the string field.
+     * @param {HTMLElement}   [options.container]        - The DOM element to which the string field will be appended.
+     * @param {string}        options.label              - The identifier for the string field, used for data attributes and labeling.
+     * @param {string}        [options.title]            - The title attribute for the field container, often used for tooltips.
+     * @param {string|number} [options.initialValue='']  - The initial value of the textarea. Defaults to an empty string if not provided or invalid.
+     * @param {boolean}       [options.isReadonly=false] - Determines if the textarea is read-only.
+     * @param {Function}      setCallback                - Callback function to handle changes to the textarea's value.
      *
-     * @returns {void}
-     *
-     * @example
-     * newStringField(
-     *   document.getElementById('form-container'),
-     *   1,
-     *   'UserDescription',
-     *   'Enter your description here.',
-     *   'Initial description...',
-     *   false,
-     *   (value) => { console.log('Textarea value:', value); }
-     * );
+     * @returns {HTMLElement} The container element that includes the newly created string field.
      */
-    static newStringField(container, step, label, title, initialValue, isReadonly, setCallback) {
+    static newStringField(options, setCallback) {
         /**
          * Adjusts the size of the textarea dynamically based on its content
          * and invokes the callback with the current value.
@@ -1873,80 +1869,107 @@ class CustomFields {
          * @param {HTMLTextAreaElement} textarea - The textarea element to resize and process.
          */
         const callback = (textarea) => {
-            // Reset the height to auto to calculate the scroll height dynamically.
+            // Reset the height to 'auto' to recalculate the required height based on content.
             textarea.style.height = 'auto';
 
-            // Calculate the required height based on the content.
+            // Calculate the scroll height, which represents the full height of the content.
             const contentHeight = textarea.scrollHeight;
+
+            // Get the computed styles of the textarea to determine line height and minimum height.
             const computedStyle = window.getComputedStyle(textarea);
             const lineHeight = parseFloat(computedStyle.lineHeight);
             const minHeight = parseFloat(computedStyle.minHeight);
+
+            // Define the maximum number of lines the textarea can expand to before enabling scroll.
             const maxLines = 8;
             const maxHeight = lineHeight * maxLines;
 
             if (contentHeight <= maxHeight) {
-                // If content height is within the limit, adjust height and hide the scrollbar.
+                // If the content height is within the maximum allowed height:
+
+                // Set the textarea height to the content height or minimum height, whichever is greater.
                 textarea.style.height = contentHeight > minHeight ? `${contentHeight}px` : `${minHeight}px`;
+
+                // Hide the vertical scrollbar since content fits within the textarea.
                 textarea.style.overflowY = 'hidden';
+            // If the content exceeds the maximum allowed height:
             } else {
-                // If content exceeds the limit, set height to maxHeight and enable the scrollbar.
+                // Set the textarea height to the maximum height.
                 textarea.style.height = `${maxHeight}px`;
+
+                // Enable the vertical scrollbar to allow scrolling through content.
                 textarea.style.overflowY = contentHeight === 0 ? 'hidden' : 'scroll';
             }
 
-            // Invoke the callback function with the current textarea value.
+            // Invoke the callback function with the current value of the textarea.
             setCallback(textarea.value);
         };
 
-        // Generate a unique ID for the textarea element.
+        // Generate a unique identifier for the textarea to ensure uniqueness in the DOM.
         const inputId = newUid();
 
-        // Convert the label from PascalCase to a space-separated format for display.
-        const labelDisplayName = convertPascalToSpaceCase(label);
+        // Convert the label from PascalCase to a space-separated format for display purposes.
+        const labelDisplayName = convertPascalToSpaceCase(options.label);
 
-        // Set the initial value to an empty string if it is not defined or is NaN.
-        initialValue = !initialValue || initialValue === NaN || initialValue === 'undefined'
+        /**
+         * Validate and sanitize the initial value.
+         * If the initial value is not provided, is NaN, or is the string 'undefined', default it to an empty string.
+         */
+        options.initialValue = (!options.initialValue || isNaN(options.initialValue) || options.initialValue === 'undefined')
             ? ''
-            : initialValue;
+            : options.initialValue;
 
-        // Create the textarea element.
+        // Create a textarea element dynamically.
         const textareaElement = document.createElement('textarea');
-        textareaElement.setAttribute('id', inputId);               // Assign the unique ID.
-        textareaElement.setAttribute('rows', '1');                 // Set the initial number of rows.
-        textareaElement.setAttribute('wrap', 'off');               // Disable text wrapping.
-        textareaElement.setAttribute('data-g4-attribute', label);  // Custom data attribute for context.
-        textareaElement.setAttribute('spellcheck', 'false');       // Disable spellcheck.
-        textareaElement.setAttribute('title', initialValue);       // Set the tooltip text.
-        textareaElement.value = initialValue;                      // Set the initial value.
 
-        // Create a new field container div with a label and icon.
-        const fieldContainer = newFieldContainer(inputId, labelDisplayName, title);
+        // Set necessary attributes for the textarea.
+        textareaElement.setAttribute('id', inputId);
+        textareaElement.setAttribute('rows', '1');                        // Start with a single row; height will adjust dynamically.
+        textareaElement.setAttribute('wrap', 'off');                      // Disable text wrapping to allow horizontal scrolling if needed.
+        textareaElement.setAttribute('data-g4-attribute', options.label); // Custom data attribute for identification.
+        textareaElement.setAttribute('spellcheck', 'false');              // Disable spell checking.
+        textareaElement.setAttribute('title', options.initialValue);      // Tooltip displaying the current value.
+        textareaElement.value = options.initialValue;                     // Set the initial value of the textarea.
 
-        // Select the controller container within the field container.
-        const id = CSS.escape(inputId);
-        const controllerContainer = fieldContainer.querySelector(`#${id}-controller`);
+        // Create a container for the field using a helper function, passing the unique ID, display label, and title.
+        const fieldContainer = newFieldContainer(inputId, labelDisplayName, options.title);
 
-        // Append the textarea to the container div.
+        // Escape the inputId to safely use it in a CSS selector.
+        const escapedId = CSS.escape(inputId);
+
+        // Select the specific sub-container within the field container where the textarea will reside.
+        const controllerContainer = fieldContainer.querySelector(`#${escapedId}-controller`);
+
+        // Append the textarea element to the controller container.
         controllerContainer.appendChild(textareaElement);
 
-        // If the textarea is read-only, set the readonly attribute.
-        if (isReadonly) {
+        // If the textarea should be read-only, set the 'readonly' attribute.
+        if (options.isReadonly) {
             textareaElement.setAttribute('readonly', 'readonly');
         }
 
-        // Attach an event listener to handle input events for resizing and value changes.
+        // If a callback function is provided, add an event listener to handle input events.
         if (setCallback) {
             fieldContainer.addEventListener('input', () => {
+                // Update the title attribute to reflect the current value of the textarea.
                 textareaElement.title = textareaElement.value;
+
+                // Invoke the callback with the current value of the textarea, which also adjusts its height.
                 callback(textareaElement);
             });
         }
 
-        // Append the field container to the parent container.
-        container.appendChild(fieldContainer);
+        // If a container element is provided in the options, append the entire field container to it.
+        if (options.container) {
+            options.container.appendChild(fieldContainer);
+        }
 
-        // Return the textarea element for potential further use by calling code.
-        return container;
+        /**
+         * Return the container that now includes the new string field.
+         * - If an external container was provided, return that container.
+         * - Otherwise, return the newly created field container.
+         */
+        return options.container ? options.container : fieldContainer;
     }
 
     /**
