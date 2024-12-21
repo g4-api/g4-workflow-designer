@@ -1995,64 +1995,94 @@ class CustomFields {
     }
 
     /**
-     * Creates and appends a new text input field to the specified container.
+     * Creates and returns a new text input field based on the provided options.
      *
-     * @param {HTMLElement}   container    - The parent element to which the text field will be appended.
-     * @param {string}        label        - The identifier for the text field, expected in PascalCase format.
-     * @param {string}        title        - The title attribute for the input element, typically used for tooltips.
-     * @param {string|number} initialValue - The initial value to populate the input field. Defaults to an empty string if invalid.
-     * @param {number}        step         - (Optional) The step attribute for the input element. Not used in the current implementation.
-     * @param {boolean}       isReadonly   - Determines if the input field should be read-only.
-     * @param {function}      setCallback  - A callback function invoked whenever the input value changes.
+     * @param {Object}      options                    - Configuration options for the text field.
+     * @param {string}      options.label              - The label identifier for the text field.
+     * @param {string}      [options.initialValue]     - The initial value to populate the text field.
+     * @param {string}      [options.title]            - The title attribute for the field container, often used for tooltips.
+     * @param {boolean}     [options.isReadonly=false] - Determines if the text field is read-only.
+     * @param {HTMLElement} [options.container]        - The DOM element to which the text field will be appended.
+     * @param {Function}    setCallback                - Callback function to handle changes to the text field's value.
+     *
+     * @returns {HTMLElement} The container element that includes the newly created text field.
      */
-    static newTextField(container, label, title, initialValue, step, isReadonly, setCallback) {
-        // Generate a unique ID for the input element.
+    static newTextField(options, setCallback) {
+
+        // Generate a unique identifier for the input field to ensure uniqueness in the DOM
         const inputId = newUid();
 
-        // Convert the label from PascalCase to a space-separated format for display purposes.
-        const labelDisplayName = convertPascalToSpaceCase(label);
+        // Convert the label from PascalCase to a space-separated format for display purposes
+        const labelDisplayName = convertPascalToSpaceCase(options.label);
 
-        // Validate and set the initial value. If invalid (undefined, NaN, or 'undefined'), default to an empty string.
-        initialValue = (!initialValue || isNaN(initialValue) || initialValue === 'undefined') ? '' : initialValue;
+        /**
+         * Validate and sanitize the initial value.
+         * If the initial value is not provided, not a number, or undefined, default it to an empty string.
+         */
+        options.initialValue = (!options.initialValue || isNaN(options.initialValue) || options.initialValue === 'undefined')
+            ? ''
+            : options.initialValue;
 
-        // Construct the HTML string for the text input element with necessary attributes.
+        /**
+         * Construct the HTML string for the input element with the necessary attributes.
+         * - `data-g4-attribute`: Custom data attribute for identifying the field.
+         * - `title`            : Tooltip text showing the current value.
+         * - `type`             : Specifies the input type as text.
+         * - `spellcheck`       : Disables spell checking for the input field.
+         * - `value`            : Sets the initial value of the input field.
+         */
         const html = `
         <input 
-            data-g4-attribute="${label}" 
-            title="${initialValue}" 
+            data-g4-attribute="${options.label}" 
+            title="${options.initialValue}" 
             type="text" 
             spellcheck="false"
-            value="${initialValue}" />`;
+            value="${options.initialValue}" />`;
 
-        // Create a new field container div that includes a label and an optional icon.
-        const fieldContainer = newFieldContainer(inputId, labelDisplayName, title);
+        // Create a container for the field using a helper function, passing the unique ID, display label, and title
+        const fieldContainer = newFieldContainer(inputId, labelDisplayName, options.title);
 
-        // Select the controller container within the field container where the input will be inserted.
-        const controllerContainer = fieldContainer.querySelector('[g4-role="controller"]');
+        // Select the specific sub-container within the field container where the input element will reside
+        const controllerContainer = fieldContainer.querySelector('[data-g4-role="controller"]');
 
-        // Insert the constructed input HTML into the controller container.
+        // Insert the input HTML into the controller container at the end of its current content
         controllerContainer.insertAdjacentHTML('beforeend', html);
 
-        // Retrieve the input element from the controller container for further manipulation.
+        // Retrieve the newly inserted input element for further manipulation
         const input = controllerContainer.querySelector('input');
 
-        // If the field is marked as read-only, set the 'readonly' attribute on the input element.
-        if (isReadonly) {
+        /**
+         * If the `isReadonly` option is true, set the `readonly` attribute on the input element
+         * to prevent user modification.
+         */
+        if (options.isReadonly) {
             input.setAttribute('readonly', 'readonly');
         }
 
-        // Add an event listener to the field container to handle input events.
-        // When the input value changes, update the title attribute and invoke the callback with the new value.
+        /**
+         * Add an event listener to the field container that listens for input events.
+         * - Updates the `title` attribute of the input to reflect its current value.
+         * - Invokes the `setCallback` function with the new value whenever the input changes.
+         */
         fieldContainer.addEventListener('input', () => {
             input.title = input.value;
             setCallback(input.value);
         });
 
-        // Append the fully constructed field container to the specified parent container in the DOM.
-        container.appendChild(fieldContainer);
+        /**
+         * If a container element is provided in the options, append the entire field container to it.
+         * This allows for flexible placement of the new text field within the DOM.
+         */
+        if (options.container) {
+            options.container.appendChild(fieldContainer);
+        }
 
-        // Return the container for potential further use by the calling code.
-        return container;
+        /**
+         * Return the container that now includes the new text field.
+         * - If an external container was provided, return that container.
+         * - Otherwise, return the newly created field container.
+         */
+        return options.container ? options.container : fieldContainer;
     }
 
     /**
