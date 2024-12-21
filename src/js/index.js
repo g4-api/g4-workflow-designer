@@ -457,6 +457,14 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 			for (const index of indexes) {
 				const property = value[index];
 
+				// If the property is null or undefined, delete the property from the definition
+				// This is done to ensure that the property is not set to null or undefined
+				// as it would be set to null or undefined in the definition
+				if(!property) {
+					delete value[index];
+					continue;
+				}
+
 				// Iterate over each key within the current property
 				for (const key of Object.keys(property)) {
 					const propertyValue = property[key];

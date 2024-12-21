@@ -250,112 +250,217 @@ const newMultipleFieldsContainer = (id, labelDisplayName, hintText, role) => {
     return detailsContainer;
 };
 
-const newObjectArrayFieldsContainer = (id, labelDisplayName, hintText, role, groupName, objectSchemas, setCallback) => {
+/**
+ * Creates and appends a new Object Array Fields container to the specified parent container.
+ *
+ * This container includes functionality to add new array items dynamically and initializes
+ * existing array items based on provided data objects. Each array item can be removed,
+ * and changes are communicated via the provided callback function.
+ *
+ * @param {string}        id                        - The unique identifier for the container.
+ * @param {Object}        options                   - Configuration options for the container.
+ * @param {string}        options.labelDisplayName  - The display name for the container label.
+ * @param {string}        options.title             - The title attribute for the container, typically used for tooltips.
+ * @param {string}        options.role              - The role attribute for the container, used for identifying elements.
+ * @param {string}        options.addButtonLabel    - The label for the "Add" button.
+ * @param {string}        options.removeButtonLabel - The label for the "Remove" button.
+ * @param {Array<Object>} options.dataObjects       - An array of data objects to initialize the container with.
+ * @param {string}        [options.groupName]       - The group name used for property normalization.
+ * @param {Function}      setCallback - A callback function invoked whenever the container is modified.
+ * @returns {HTMLElement} - The DOM element representing the Object Array Fields container.
+ */
+const newObjectArrayFieldsContainer = (id, options, setCallback) => {
+    /**
+     * Creates a new array object container with dynamic properties and a remove button.
+     *
+     * @param {Object}   dataObject  - The data object containing properties for the array item.
+     * @param {number}   index       - The index of the array item.
+     * @param {string}   mode        - The mode of the form, e.g., 'NEW' or 'EDIT'.
+     * @param {Function} setCallback - A callback function invoked when the array item is modified or removed.
+     * @returns {HTMLElement} - The DOM element representing the array item container.
+     */
+    const newArrayObject = (dataObject, index, mode, setCallback) => {
+        // Generate a unique key based on the index.
+        const indexKey = `${index}`;
 
-    const add = (container, groupName, fieldName, property, index, setCallback) => {
-        const type = property.type?.toLocaleUpperCase() || 'STRING';
-        const label = property?.label || 'NameNotAvailable';
-        const displayName = convertPascalToSpaceCase(property?.label || 'NameNotAvailable');
-        const title = property?.title || 'Help text not available';
+        // Create a container for the array item with a unique identifier and label.
+        const arrayContainer = newMultipleFieldsContainer(`${id}-${index}`, `${options.itemLabel} ${index}`, "Foo Bar", "array-item-container");
 
+        // Select the sub-container designated for array item properties.
+        const itemContainer = arrayContainer.querySelector(`[g4-role="array-item-container"]`);
+
+        // Select the summary element to position the remove button.
+        const summaryContainer = arrayContainer.querySelector('summary');
+
+        // Retrieve all property keys from the data object.
+        const keys = Object.keys(dataObject);
+
+        // Create and configure the remove button.
+        const buttonController = document.createElement('button');
+        buttonController.type = 'button';
+        buttonController.textContent = `${options.removeButtonLabel}`;
+        buttonController.style = "margin-top: 1em;";
+        buttonController.onclick = () => {
+            controllerContainer.removeChild(arrayContainer);
+            setCallback({
+                [indexKey]: null
+            });
+        };
+
+        // Create a container for the remove button and append the button to it.
+        const buttonContainer = document.createElement('div');
+        buttonContainer.classList.add('text-with-button');
+        buttonContainer.appendChild(buttonController);
+
+        // Insert the remove button container after the summary element.
+        summaryContainer.after(buttonContainer);
+
+        // Iterate over each key in the data object to create corresponding property fields.
+        for (const key of keys) {
+            const property = dataObject[key];
+            const propertyOptions = {
+                groupName: options?.groupName,
+                fieldName: key,
+                property: property,
+                mode: mode
+            };
+            newArrayProperty(itemContainer, propertyOptions, index, setCallback);
+        }
+
+        // Return the fully constructed array item container.
+        return arrayContainer;
+    };
+
+    /**
+     * Creates and appends a new property field within an array item container based on the property type.
+     *
+     * @param {HTMLElement} container   - The container element where the property field will be appended.
+     * @param {Object}      options     - Configuration options for the property field.
+     * @param {number}      index       - The index of the array item.
+     * @param {Function}    setCallback - A callback function invoked when the property value changes.
+     */
+    const newArrayProperty = (container, options, index, setCallback) => {
+        /**
+         * Handles the callback for property value changes, updating the corresponding data structure.
+         *
+         * @param {*} value - The new value of the property.
+         * @param {Function} setCallback - The callback function to update the state.
+         */
+        const propertyCallback = (value, setCallback) => {
+            const data = {};
+            const normalizedGroupName = convertToCamelCase(options.groupName);
+            const indexKey = `${index}`;
+
+            // Initialize the group object if it doesn't exist.
+            data[normalizedGroupName] = data[normalizedGroupName] || {};
+
+            // Update the specific field within the group.
+            data[normalizedGroupName][options.fieldName] = value;
+
+            // Invoke the callback with the updated data.
+            setCallback({
+                [indexKey]: data
+            });
+        };
+
+        // Determine the type of the property and set default values if necessary.
+        const type = options.property.type?.toLocaleUpperCase() || 'STRING';
+        const label = options.property?.label || 'NameNotAvailable';
+        const title = options.property?.title || 'Help text not available';
+        const mode = options?.mode || 'NEW';
+
+        // Create the appropriate input field based on the property type.
         switch (type) {
             case 'STRING':
-                CustomFields.newStringField(container, {}, label, title, property.value, false, (value) => {
-                    const data = {};
-                    const normalizedGroupName = convertToCamelCase(groupName);
-                    const indexKey = `${index}`;
-
-                    data[normalizedGroupName] = data[normalizedGroupName] || {};
-                    data[normalizedGroupName][fieldName] = value;
-
-                    setCallback({
-                        [indexKey]: data
-                    });
-                });
+                CustomFields.newStringField(
+                    container,
+                    {},
+                    label,
+                    title,
+                    mode === 'NEW' ? null : options.property.value,
+                    false,
+                    (value) => propertyCallback(value, setCallback)
+                );
                 break;
             case 'NUMBER':
-                CustomFields.newNumberField(container, label, title, property.value, 1, false, (value) => {
-                    const data = {};
-                    const normalizedGroupName = convertToCamelCase(groupName);
-                    const indexKey = `${index}`;
-
-                    data[normalizedGroupName] = data[normalizedGroupName] || {};
-                    data[normalizedGroupName][fieldName] = value;
-
-                    setCallback({
-                        [indexKey]: data
-                    });
-                });
+                CustomFields.newNumberField(
+                    container,
+                    label,
+                    title,
+                    mode === 'NEW' ? null : options.property.value,
+                    1,
+                    false,
+                    (value) => propertyCallback(value, setCallback)
+                );
                 break;
             case 'KEYVALUE':
-                CustomFields.newKeyValueField(container, label, title, property.value, (value) => {
-                    const data = {};
-                    const normalizedGroupName = convertToCamelCase(groupName);
-                    const indexKey = `${index}`;
-
-                    data[normalizedGroupName] = data[normalizedGroupName] || {};
-                    data[normalizedGroupName][fieldName] = value;
-
-                    setCallback({
-                        [indexKey]: data
-                    });
-                });
+                CustomFields.newKeyValueField(
+                    container,
+                    label,
+                    title,
+                    mode === 'NEW' ? null : options.property.value,
+                    (value) => propertyCallback(value, setCallback)
+                );
                 break;
             default:
+                console.warn(`Unsupported property type: ${type}`);
                 break;
         }
-    }
+    };
 
+    // Escape the unique identifier to ensure it's safe for use in CSS selectors.
     const escapedId = CSS.escape(id);
-    const label = convertPascalToSpaceCase(groupName);
-    const fieldContainer = newMultipleFieldsContainer(id, labelDisplayName, hintText, role);
 
+    // Create a container with multiple fields using the provided ID, label, title, and role.
+    const fieldContainer = newMultipleFieldsContainer(id, options.labelDisplayName, options.title, options.role);
+
+    // Select the controller sub-container within the field container using the escaped unique ID.
     const controllerContainer = fieldContainer.querySelector(`#${escapedId}-container`);
+
+    // Select the summary element to position the add button appropriately.
     const summaryContainer = fieldContainer.querySelector('summary');
 
+    // Create and configure the "Add" button.
     const buttonController = document.createElement('button');
     buttonController.type = 'button';
-    buttonController.textContent = `Add ${label}`;
+    buttonController.textContent = `${options.addButtonLabel}`;
     buttonController.style = "margin-top: 1em;";
-    buttonController.addEventListener('click', () => add(controllerContainer, groupName, objectSchemas, setCallback));
 
+    // Add an event listener to handle the addition of new array items.
+    buttonController.addEventListener('click', () => {
+        // Retrieve the schema for a new array item from the first data object.
+        const schema = options?.dataObjects[0];
+
+        // Determine the index for the new array item based on the current number of children.
+        const index = controllerContainer.children.length;
+
+        // Create a new array object container in 'NEW' mode.
+        const arrayContainer = newArrayObject(schema, index, 'NEW', setCallback);
+
+        // Append the newly created array container to the controller container.
+        controllerContainer.appendChild(arrayContainer);
+    });
+
+    // Create a container for the "Add" button and append the button to it.
     const buttonContainer = document.createElement('div');
     buttonContainer.classList.add('text-with-button');
     buttonContainer.appendChild(buttonController);
 
+    // Insert the "Add" button container after the summary element.
     summaryContainer.after(buttonContainer);
 
+    // Initialize existing array items based on the provided data objects.
+    for (let index = 0; index < options.dataObjects.length; index++) {
+        const dataObject = options.dataObjects[index];
 
-    
+        // Create a new array object container in 'ADD' mode for each existing data object.
+        const arrayContainer = newArrayObject(dataObject, index, 'ADD', setCallback);
 
-    for (let index = 0; index < objectSchemas.length; index++) {
-        const arrayContainer = newMultipleFieldsContainer(`${id}-${index}`, `External Repository ${index}`, "Foo Bar", "array-item-container");
-        const itemContainer = arrayContainer.querySelector(`[g4-role="array-item-container"]`);
-        const summaryContainer = arrayContainer.querySelector('summary');
-
-        const buttonController = document.createElement('button');
-        buttonController.type = 'button';
-        buttonController.textContent = `Remove`;
-        buttonController.style = "margin-top: 1em;";
-       // buttonController.addEventListener('click', () => add(controllerContainer, groupName, objectSchemas, setCallback));
-    
-        const buttonContainer = document.createElement('div');
-        buttonContainer.classList.add('text-with-button');
-        buttonContainer.appendChild(buttonController);
-    
-        summaryContainer.after(buttonContainer);
-
-
-        const objectSchema = objectSchemas[index];
-        const keys = Object.keys(objectSchema);
-
-        for (const key of keys) {
-            const property = objectSchema[key];
-            add(itemContainer, groupName, key, property, index, setCallback);
-        }
+        // Append the array container to the controller container.
         controllerContainer.appendChild(arrayContainer);
     }
 
+    // Return the fully constructed Object Array Fields container for further manipulation if needed.
     return fieldContainer;
 }
 
@@ -866,99 +971,136 @@ class CustomG4Fields {
         return container;
     }
 
+    /**
+     * Creates and appends a new Plugins Settings field to the specified container.
+     *
+     * This field allows users to configure multiple external repositories by specifying
+     * details such as URL, version, authentication credentials, timeout settings, headers,
+     * and capabilities. Users can dynamically add or remove external repository configurations.
+     *
+     * @param {HTMLElement} container    - The parent element to which the plugins settings field will be appended.
+     * @param {string}      label        - The display name for the plugins settings field.
+     * @param {string}      title        - The title attribute for the field container, typically used for tooltips.
+     * @param {Object}      initialValue - An object containing initial values for the plugins settings.
+     * @param {Function}    setCallback  - A callback function invoked whenever the plugins settings change.
+     * @returns {HTMLElement} - The parent container with the appended plugins settings field.
+     */
     static newPluginsSettingsField(container, label, title, initialValue, setCallback) {
-        const newObjectSchema = (externalRepository) => {
-            const schema = {};
-            schema['url'] = {
+        /**
+         * Generates a data object schema for an external repository.
+         *
+         * @param {Object} externalRepository - The external repository data to initialize the schema with.
+         * @returns {Object} - The data object schema for the external repository.
+         */
+        const newDataObject = (externalRepository) => {
+            // Initialize an empty object to hold the data object schema.
+            const dataObject = {};
+
+            // Define the 'url' field for the external repository.
+            dataObject['url'] = {
                 label: 'Url',
                 title: 'The URL of the external repository.',
                 type: 'STRING',
                 value: externalRepository?.url || ''
-            }
+            };
 
-            schema['version'] = {
+            // Define the 'version' field for the external repository.
+            dataObject['version'] = {
                 label: 'Version',
                 title: 'The API version of the external repository.',
                 type: 'NUMBER',
                 value: externalRepository?.version || ''
-            }
+            };
 
-            schema['name'] = {
+            // Define the 'name' field for the external repository.
+            dataObject['name'] = {
                 label: 'Name',
                 title: 'The name of the external repository.',
                 type: 'STRING',
                 value: externalRepository?.name || ''
+            };
 
-            }
-
-            schema['username'] = {
+            // Define the 'username' field for authenticating with the external repository.
+            dataObject['username'] = {
                 label: 'Username',
                 title: 'The username to authenticate with the external repository.',
                 type: 'STRING',
                 value: externalRepository?.username || ''
+            };
 
-            }
-
-            schema['password'] = {
+            // Define the 'password' field for authenticating with the external repository.
+            dataObject['password'] = {
                 label: 'Password',
                 title: 'The password to authenticate with the external repository.',
                 type: 'STRING',
                 value: externalRepository?.password || ''
+            };
 
-            }
-
-            schema['timeout'] = {
+            // Define the 'timeout' field for request timeout settings.
+            dataObject['timeout'] = {
                 label: 'Timeout',
                 title: 'The time in seconds to wait before the request times out (default 300 seconds).',
                 type: 'NUMBER',
                 value: externalRepository?.timeout || '300'
-            }
+            };
 
-            schema['headers'] = {
+            // Define the 'headers' field for request headers.
+            dataObject['headers'] = {
                 label: 'Headers',
                 title: 'A collection of headers to be included in the request.',
                 type: 'KEYVALUE',
                 value: externalRepository?.headers || {}
-            }
+            };
 
-
-            schema['capabilities'] = {
+            // Define the 'capabilities' field for additional custom information.
+            dataObject['capabilities'] = {
                 label: 'Capabilities',
                 title: 'A collection of capabilities with additional custom information for the invocation.',
                 type: 'KEYVALUE',
                 value: externalRepository?.capabilities || {}
+            };
 
-            }
-
-            return schema;
+            // Return the fully constructed data object schema for the external repository.
+            return dataObject;
         };
 
-        // Generate a unique identifier for the performance points settings fields.
+        // Generate a unique identifier for the plugins settings fields.
         const inputId = newUid();
 
-        // Escape the unique identifier to ensure it's safe for use in CSS selectors.
-        const escapedId = CSS.escape(inputId);
+        // Initialize external repositories with existing data or a default empty object.
+        const externalRepositories = initialValue?.externalRepositories || [{}];
 
-        // Create a container with multiple performance points settings fields using the provided ID, label, and title.
-        const externalRepositories = initialValue?.externalRepositories || [
-            {}
-        ];
-        const data = [];
+        // Prepare an array to hold data object schemas for each external repository.
+        const dataObjects = [];
+
+        // Retrieve all keys (indices) from the externalRepositories object.
         const indexes = Object.keys(externalRepositories);
+
+        // Iterate over each external repository to create its data object schema.
         for (const index of indexes) {
-            const schema = newObjectSchema(externalRepositories[index]);
-            data.push(schema);
+            const schema = newDataObject(externalRepositories[index]);
+            dataObjects.push(schema);
         }
 
-        const fieldContainer = newObjectArrayFieldsContainer(inputId, label, title, 'container', 'ExternalRepositories', data, setCallback);
+        // Configuration options for the object array fields container.
+        const options = {
+            addButtonLabel: 'Add External Repository', // Label for the "Add" button.
+            dataObjects: dataObjects,                  // Array of data object schemas for initialization.
+            groupName: 'ExternalRepositories',         // Group name used for property normalization.
+            itemLabel: 'External Repository',          // Label prefix for each array item.
+            labelDisplayName: label,                   // Display name for the container label.
+            removeButtonLabel: 'Remove',               // Label for the "Remove" button.
+            role: 'container',                         // Role attribute for identifying elements.
+            title: title                               // Title attribute for the container.
+        };
 
-        // Select the controller sub-container within the field container using the escaped unique ID.
-        const controller = fieldContainer.querySelector(`#${escapedId}-container`);
+        // Create the object array fields container with the provided options and callback.
+        const fieldContainer = newObjectArrayFieldsContainer(inputId, options, setCallback);
 
-        // Append the fully constructed performance points settings field container to the provided parent container in the DOM.
+        // Append the fully constructed plugins settings field container to the provided parent container in the DOM.
         container.appendChild(fieldContainer);
 
-        // Return the parent container with the appended performance points settings field for further manipulation if needed.
+        // Return the parent container with the appended plugins settings field for further manipulation if needed.
         return container;
     }
 }
