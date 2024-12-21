@@ -1303,14 +1303,14 @@ class CustomFields {
                 // Remove this row from the container when clicked.
                 container.removeChild(row);
 
-                // // Find the closest [g4-role="field"] container, then locate the controller within it.
-                // const fieldContainer = container.closest('[g4-role="field"]');
-                // if (fieldContainer) {
-                //     const titleContainer = fieldContainer.querySelector('[g4-role="controller"]');
+                // Find the closest [g4-role="field"] container, then locate the controller within it.
+                const fieldContainer = container.closest('[g4-role="field"]');
+                if (fieldContainer) {
+                    const titleContainer = fieldContainer.querySelector('[g4-role="controller"]');
 
-                //     // After removing a row, update the values via the callback.
-                //     callback(titleContainer);
-                // }
+                    // After removing a row, update the values via the callback.
+                    callback(titleContainer);
+                }
             };
 
             // Append the remove button, key input, and value input into the row.
