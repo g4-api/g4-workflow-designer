@@ -688,10 +688,12 @@ class CustomG4Fields {
         // container, label, title, initialValue, setCallback
         // Create a new switch field for the "ReturnFlatResponse".
         CustomFields.newSwitchField(
-            controller,
-            "ReturnFlatResponse",
-            "A valid G4 username and password are required to authenticate and authorize automation requests.",
-            initialValue?.returnFlatResponse || false,
+            {
+                container: controller,
+                initialValue: initialValue?.returnFlatResponse || false,
+                label: "ReturnFlatResponse",
+                title: "Indicates whether to includes a flattened format within the `responseData` field of the response."
+            },
             (value) => {
                 const automationSettings = {
                     returnFlatResponse: convertStringToBool(value)
@@ -702,10 +704,12 @@ class CustomG4Fields {
 
         // Create a new switch field for the "ReturnStructuredResponse".
         CustomFields.newSwitchField(
-            controller,
-            "ReturnStructuredResponse",
-            "A valid G4 username and password are required to authenticate and authorize automation requests.",
-            initialValue?.returnStructuredResponse || false,
+            {
+                container: controller,
+                initialValue: initialValue?.returnStructuredResponse || false,
+                label: "ReturnStructuredResponse",
+                title: "Indicates whether to includes a structured format within the `responseTree` field of the response."
+            },
             (value) => {
                 const automationSettings = {
                     returnStructuredResponse: convertStringToBool(value)
@@ -781,10 +785,12 @@ class CustomG4Fields {
 
         // Create a new switch field for Return Environment.
         CustomFields.newSwitchField(
-            controller,
-            'ReturnEnvironment',
-            'Indicates whether the environment should be returned in the response.',
-            initialValue?.returnEnvironment || false,
+            {
+                container: controller,
+                initialValue: initialValue?.returnEnvironment || false,
+                label: 'ReturnEnvironment',
+                title: 'Indicates whether the environment should be returned in the response.'
+            },
             (value) => {
                 const environmentSettings = {
                     returnEnvironment: convertStringToBool(value)
@@ -842,10 +848,12 @@ class CustomG4Fields {
 
         // Create a new switch field for Return Exceptions.
         CustomFields.newSwitchField(
-            controller,
-            'ReturnExceptions',
-            'Indicates whether the exceptions should be returned in the response.',
-            initialValue?.returnExceptions || false,
+            {
+                container: controller,
+                initialValue: initialValue?.returnExceptions || false,
+                label: 'ReturnExceptions',
+                title: 'Indicates whether the exceptions should be returned in the response.'
+            },
             (value) => {
                 const exceptionsSettings = {
                     returnExceptions: convertStringToBool(value)
@@ -952,10 +960,12 @@ class CustomG4Fields {
 
         // Create a new switch field for Return Performance Points.
         CustomFields.newSwitchField(
-            controller,
-            'ReturnPerformancePoints',
-            'Indicates whether the performance points should be returned in the response.',
-            initialValue?.returnPerformancePoints || false,
+            {
+                container: controller,
+                initialValue: initialValue?.returnPerformancePoints || false,
+                label: 'ReturnPerformancePoints',
+                title: 'Indicates whether the performance points should be returned in the response.'
+            },
             (value) => {
                 const performancePointsSettings = {
                     returnPerformancePoints: convertStringToBool(value)
@@ -1102,10 +1112,12 @@ class CustomG4Fields {
 
         // Append new switch field for ForceRuleReference.
         CustomFields.newSwitchField(
-            fieldContainer,
-            'ForceRuleReference',
-            'Indicating whether rule references should be forced when reused across different jobs. When set to `true` (the default), a new copy of the rule with a new reference will be created for each job where the rule is reused.',
-            forceRuleReference,
+            {
+                container: fieldContainer,
+                initialValue: forceRuleReference,
+                label: 'ForceRuleReference',
+                title: 'Indicates whether rule references should be forced when reused across different jobs. When set to `true` (the default), a new copy of the rule with a new reference will be created.'
+            },
             (value) => {
                 const pluginsSettings = {
                     forceRuleReference: convertStringToBool(value)
@@ -1938,48 +1950,63 @@ class CustomFields {
     }
 
     /**
-     * Creates a new switch field (dropdown) for selecting between "True" and "False" options.
+     * Creates and appends a new switch (select) field to the specified container based on provided options.
      *
-     * @param {HTMLElement} container    - The parent container to which the switch field will be added.
-     * @param {string}      label        - The label for the switch field, displayed above the dropdown.
-     * @param {string}      title        - The tooltip text for the switch field.
-     * @param {boolean}     initialValue - The initial value of the switch (true/false).
-     * @param {Function}    setCallback  - A callback function invoked whenever the value changes.
+     * @param {Object}         options                      - Configuration options for the switch field.
+     * @param {HTMLElement}    [options.container]          - The DOM element to which the switch field will be appended.
+     * @param {string}         options.label                - The identifier for the switch field, used for data attributes and labeling.
+     * @param {string}         [options.title]              - The title attribute for the field container, often used for tooltips.
+     * @param {boolean|string} [options.initialValue=false] - The initial value of the switch field. Can be `true`, `false`, or a falsy value.
+     * @param {Function}       setCallback                  - Callback function to handle changes to the switch field's value.
+     *
+     * @returns {HTMLElement} The container element that includes the newly created switch field.
      */
-    static newSwitchField(container, label, title, initialValue, setCallback) {
-        // Generate a unique ID for the dropdown field.
+    static newSwitchField(options, setCallback) {
+        // Generate a unique identifier for the switch field to ensure uniqueness in the DOM
         const inputId = newUid();
 
-        // Convert the label from PascalCase to a human-readable space-separated format.
-        const labelDisplayName = convertPascalToSpaceCase(label);
+        // Convert the label from PascalCase to a space-separated format for display purposes
+        const labelDisplayName = convertPascalToSpaceCase(options.label);
 
-        // Ensure the initial value is a valid boolean or set it to `false` by default.
-        initialValue = !initialValue || initialValue === NaN || initialValue === undefined
+        /**
+         * Validate and sanitize the initial value.
+         * If the initial value is not provided, is NaN, or is undefined, default it to `false`.
+         */
+        options.initialValue = (!options.initialValue || isNaN(options.initialValue) || options.initialValue === undefined)
             ? false
-            : initialValue;
+            : options.initialValue;
 
-        // Build the HTML structure for the dropdown field.
-        let html = `
-        <select data-g4-attribute="${label}" title="${initialValue}">
+        /**
+         * Construct the HTML string for the select element with the necessary attributes.
+         * - `data-g4-attribute`: Custom data attribute for identifying the field.
+         * - `title`            : Tooltip text showing the current value.
+         * - `select`           : Creates a dropdown with options to activate or deactivate the switch.
+         */
+        const html = `
+        <select data-g4-attribute="${options.label}" title="${options.initialValue}">
             <option value="" disabled selected>-- Please select an option --</option>
             <option value="true" title="Activate switch">True</option>
             <option value="false" title="Deactivate switch">False</option>
         </select>`;
 
-        // Create a new container for the field, including a label and an optional title icon.
-        const fieldContainer = newFieldContainer(inputId, labelDisplayName, title);
+        // Create a container for the field using a helper function, passing the unique ID, display label, and title
+        const fieldContainer = newFieldContainer(inputId, labelDisplayName, options.title);
 
-        // Find the controller container where the dropdown will be inserted.
-        const controllerContainer = fieldContainer.querySelector('[g4-role="controller"]');
+        // Select the specific sub-container within the field container where the select element will reside
+        const controllerContainer = fieldContainer.querySelector('[data-g4-role="controller"]');
 
-        // Add the dropdown HTML to the controller container.
+        // Insert the select HTML into the controller container at the end of its current content
         controllerContainer.insertAdjacentHTML('beforeend', html);
 
-        // Select the dropdown element within the container.
+        // Retrieve the newly inserted select element for further manipulation
         const select = controllerContainer.querySelector('select');
-        select.value = initialValue;
+        select.value = options.initialValue;
 
-        // Attach an event listener to handle value changes.
+        /**
+         * If a callback function is provided, add an event listener to handle changes to the select field.
+         * - Updates the `title` attribute of the select to reflect its current value.
+         * - Invokes the `setCallback` function with the new value whenever the selection changes.
+         */
         if (setCallback) {
             fieldContainer.addEventListener('input', () => {
                 select.title = select.value;
@@ -1987,11 +2014,20 @@ class CustomFields {
             });
         }
 
-        // Append the fully constructed title container to the parent container.
-        container.appendChild(fieldContainer);
+        /**
+         * If a container element is provided in the options, append the entire field container to it.
+         * This allows for flexible placement of the new switch field within the DOM.
+         */
+        if (options.container) {
+            options.container.appendChild(fieldContainer);
+        }
 
-        // Return the container for potential further use by the calling code.
-        return container;
+        /**
+         * Return the container that now includes the new switch field.
+         * - If an external container was provided, return that container.
+         * - Otherwise, return the newly created field container.
+         */
+        return options.container ? options.container : fieldContainer;
     }
 
     /**
@@ -2064,10 +2100,12 @@ class CustomFields {
          * - Updates the `title` attribute of the input to reflect its current value.
          * - Invokes the `setCallback` function with the new value whenever the input changes.
          */
-        fieldContainer.addEventListener('input', () => {
-            input.title = input.value;
-            setCallback(input.value);
-        });
+        if (setCallback) {
+            fieldContainer.addEventListener('input', () => {
+                input.title = input.value;
+                setCallback(input.value);
+            });
+        }
 
         /**
          * If a container element is provided in the options, append the entire field container to it.
