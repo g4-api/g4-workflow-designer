@@ -307,12 +307,13 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 
 	// Add a string input field for configuring the "Invocation Interval".
 	CustomFields.newStringField(
-		container,
-		definition,                            // The automation definition object.
-		'Invocation Interval (ms)',            // Label for the input field.
-		'Time between each action invocation', // Description tooltip for the input field.
-		definition.properties['speed'],        // Current value of the "speed" property.
-		isReadonly,                            // Flag to set the field as read-only if true.
+		{
+			container: container,
+			initialValue: definition.properties['speed'],
+			isReadonly: isReadonly,
+			label: 'Invocation Interval (ms)',
+			title: 'Time between each action invocation'
+		},
 		(value) => {
 			// Update the "speed" property with the new value from the input.
 			definition.properties['speed'] = parseInt(value, 10); // Ensure the value is an integer.
@@ -547,10 +548,12 @@ function stepEditorProvider(step, editorContext, _definition) {
 		// If the parameter is a switch, create a new switch field.
 		if (isSwitch) {
 			CustomFields.newSwitchField(
-				container,
-				key,
-				parameter.description,
-				parameter.value,
+				{
+					container: container,
+					initialValue: parameter.value,
+					label: key,
+					title: parameter.description
+				},
 				(value) => {
 					// Update the property's value and notify the editor of the change.
 					parameter.value = value;
@@ -602,12 +605,13 @@ function stepEditorProvider(step, editorContext, _definition) {
 
 		// Add a string input field for the parameter.
 		CustomFields.newStringField(
-			container,
-			step,
-			key,
-			parameter.description,
-			parameter.value,
-			false,
+			{
+				container: container,
+				initialValue: parameter.value,
+				isReadonly: false,
+				label: key,
+				title: parameter.description
+			},
 			(value) => {
 				// Update the step's properties and notify the editor of the change.
 				parameter.value = value;
@@ -621,7 +625,12 @@ function stepEditorProvider(step, editorContext, _definition) {
 	container.title = step.description; // Set tooltip text to the step's description.
 
 	// Add a title element to the container.
-	CustomFields.newTitle(container, convertPascalToSpaceCase(step.pluginName), step.pluginType, step.description);
+	CustomFields.newTitle({
+		container: container,
+		titleText: convertPascalToSpaceCase(step.pluginName),
+		subTitleText: step.pluginType,
+		helpText: step.description
+	});
 
 	// Add a string input field for the plugin name.
 	// This field is always read-only.
