@@ -93,20 +93,20 @@ const newFieldContainer = (id, labelDisplayName, hintText) => {
     const hintContainer = document.createElement('div');
     const controllerContainer = document.createElement('div');
 
-    // Set the g4-role attribute to 'field' for the field container
-    titleContainer.setAttribute('g4-role', 'field');
+    // Set the data-g4-role attribute to 'field' for the field container
+    titleContainer.setAttribute('data-g4-role', 'field');
     titleContainer.id = `${id}-field`;
 
-    // Set the g4-role attribute to 'label' for the label container
-    labelContainer.setAttribute('g4-role', 'label');
+    // Set the data-g4-role attribute to 'label' for the label container
+    labelContainer.setAttribute('data-g4-role', 'label');
     labelContainer.id = `${id}-label`;
 
-    // Set the g4-role and id attributes to for the hint container
-    hintContainer.setAttribute('g4-role', 'hint');
+    // Set the data-g4-role and id attributes to for the hint container
+    hintContainer.setAttribute('data-g4-role', 'hint');
     hintContainer.id = `${id}-hint`;
 
-    // Set g4-role attribute to 'controller' for the controller container
-    controllerContainer.setAttribute('g4-role', 'controller');
+    // Set data-g4-role attribute to 'controller' for the controller container
+    controllerContainer.setAttribute('data-g4-role', 'controller');
     controllerContainer.id = `${id}-controller`;
 
     // Create a new `label` element
@@ -160,7 +160,7 @@ const newFieldContainer = (id, labelDisplayName, hintText) => {
  *
  * This function generates a structured HTML `div` element that serves as a container for
  * automation fields. It includes a controller sub-container, which is designated by the
- * `g4-role="controller"` attribute. The main container is marked with `g4-role="field"`.
+ * `data-g4-role="controller"` attribute. The main container is marked with `data-g4-role="field"`.
  *
  * @param {string} id   - A unique identifier used to assign IDs to the field and controller containers.
  * @param {string} role - The role of the container
@@ -170,8 +170,8 @@ const newFieldContainer = (id, labelDisplayName, hintText) => {
  * const container = newUnlabeledFieldContainer('uniqueId123');
  * document.body.appendChild(container);
  * // This will append the following HTML structure to the body:
- * // <div g4-role="field" id="uniqueId123-field">
- * //   <div g4-role="controller" id="uniqueId123-controller"></div>
+ * // <div data-g4-role="field" id="uniqueId123-field">
+ * //   <div data-g4-role="controller" id="uniqueId123-controller"></div>
  * // </div>
  */
 const newUnlabeledFieldContainer = (id, role) => {
@@ -181,14 +181,14 @@ const newUnlabeledFieldContainer = (id, role) => {
     // Create the controller sub-container div element.
     const controllerContainer = document.createElement('div');
 
-    // Set the custom attribute 'g4-role' to 'field' for the main container.
-    fieldContainer.setAttribute('g4-role', 'field');
+    // Set the custom attribute 'data-g4-role' to 'field' for the main container.
+    fieldContainer.setAttribute('data-g4-role', 'field');
 
     // Assign a unique ID to the main field container using the provided 'id'.
     fieldContainer.id = `${id}-field`;
 
-    // Set the custom attribute 'g4-role' to 'controller' for the controller container.
-    controllerContainer.setAttribute('g4-role', role || 'controller');
+    // Set the custom attribute 'data-g4-role' to 'controller' for the controller container.
+    controllerContainer.setAttribute('data-g4-role', role || 'controller');
 
     // Assign a unique ID to the controller container using the provided 'id'.
     controllerContainer.id = `${id}-${role || 'controller'}`;
@@ -220,8 +220,8 @@ const newUnlabeledFieldContainer = (id, role) => {
  * // <details>
  * //   <summary title="Click to expand and view user details">User Details</summary>
  * //   <div>
- * //     <div g4-role="field" id="uniqueId123-field">
- * //       <div g4-role="controller" id="uniqueId123-controller"></div>
+ * //     <div data-g4-role="field" id="uniqueId123-field">
+ * //       <div data-g4-role="controller" id="uniqueId123-controller"></div>
  * //     </div>
  * //   </div>
  * // </details>
@@ -287,7 +287,7 @@ const newObjectArrayFieldsContainer = (id, options, setCallback) => {
         const arrayContainer = newMultipleFieldsContainer(`${id}-${index}`, `${options.itemLabel} ${index}`, "Foo Bar", "array-item-container");
 
         // Select the sub-container designated for array item properties.
-        const itemContainer = arrayContainer.querySelector(`[g4-role="array-item-container"]`);
+        const itemContainer = arrayContainer.querySelector(`[data-g4-role="array-item-container"]`);
 
         // Select the summary element to position the remove button.
         const summaryContainer = arrayContainer.querySelector('summary');
@@ -1161,7 +1161,7 @@ class CustomFields {
          */
         function newInputCallback() {
             // Using the escaped ID, locate the container for new inputs.
-            // This container is expected to be inside an element with g4-role="controller".
+            // This container is expected to be inside an element with data-g4-role="controller".
             const container = document.querySelector(`#${escapedId}-controller > #${escapedId}-input-container`);
 
             // If the container doesn't exist, return early.
@@ -1193,7 +1193,7 @@ class CustomFields {
             const newInput = document.createElement('input');
             newInput.type = 'text';
             newInput.value = value || '';
-            newInput.setAttribute('g4-role', 'valueitem');
+            newInput.setAttribute('data-g4-role', 'valueitem');
             newInput.setAttribute('title', value);
 
             // Create the remove button. Clicking it removes the entire row from the container.
@@ -1204,9 +1204,9 @@ class CustomFields {
                 // On button click, remove the entire row from the container.
                 container.removeChild(row);
 
-                // Find the closest field container by locating the parent with [g4-role="field"].
+                // Find the closest field container by locating the parent with [data-g4-role="field"].
                 // Then select the controller element that contains the inputs.
-                const titleContainer = container.closest('[g4-role="field"]').querySelector('[g4-role="controller"]');
+                const titleContainer = container.closest('[data-g4-role="field"]').querySelector('[data-g4-role="controller"]');
 
                 // After removing a row, call the callback to update the values.
                 callback(titleContainer);
@@ -1224,15 +1224,15 @@ class CustomFields {
         }
 
         /**
-         * Gathers values from all inputs within a container that are marked with g4-role="valueitem".
+         * Gathers values from all inputs within a container that are marked with data-g4-role="valueitem".
          * Filters out null, undefined, or empty (after trimming whitespace) values.
          * Sends the resulting array of cleaned values to the provided setCallback() function.
          * 
          * @param {HTMLElement} container - The DOM element that contains the input elements.
          */
         function callback(container) {
-            // Find all input elements with the g4-role="valueitem" attribute.
-            const inputs = container.querySelectorAll('input[g4-role="valueitem"]');
+            // Find all input elements with the data-g4-role="valueitem" attribute.
+            const inputs = container.querySelectorAll('input[data-g4-role="valueitem"]');
 
             // Convert the NodeList of inputs to an array for easier processing.
             const inputArray = Array.from(inputs);
@@ -1258,7 +1258,7 @@ class CustomFields {
         const fieldContainer = newFieldContainer(inputId, labelDisplayName, title);
 
         // Within the field container, find the controller container that holds the main input and others.
-        const controllerContainer = fieldContainer.querySelector('[g4-role="controller"]');
+        const controllerContainer = fieldContainer.querySelector('[data-g4-role="controller"]');
 
         // Set up the initial HTML structure:
         // - A text input with a "+" button above it.
@@ -1266,7 +1266,7 @@ class CustomFields {
         const html = `
             <div class="text-with-button">
                 <button type="button">+</button>
-                <input type="text" g4-role="valueitem" title="${mainInputValue}" value="${mainInputValue}" />
+                <input type="text" data-g4-role="valueitem" title="${mainInputValue}" value="${mainInputValue}" />
             </div>
             <div id="${inputId}-input-container"></div>`;
 
@@ -1373,7 +1373,7 @@ class CustomFields {
         const fieldContainer = newFieldContainer(inputId, labelDisplayName, title);
 
         // Select the controller container within the field container.
-        const controllerContainer = fieldContainer.querySelector('[g4-role="controller"]');
+        const controllerContainer = fieldContainer.querySelector('[data-g4-role="controller"]');
 
         // Set the inner HTML of the field container to the constructed dropdown.
         controllerContainer.insertAdjacentHTML('beforeend', html);
@@ -1449,20 +1449,20 @@ class CustomFields {
             // Create a row div for holding the key input, value input, and remove button together.
             const row = document.createElement('div');
             row.className = 'text-with-button input-row';
-            row.setAttribute('g4-role', 'keyvalue');
+            row.setAttribute('data-g4-role', 'keyvalue');
 
             // Create the key input and set its initial value and attributes.
             const newKeyInput = document.createElement('input');
             newKeyInput.type = 'text';
             newKeyInput.value = key || '';
-            newKeyInput.setAttribute('g4-role', 'key');
+            newKeyInput.setAttribute('data-g4-role', 'key');
             newKeyInput.setAttribute('title', `Key: ${key || ''}`);
 
             // Create the value input and set its initial value and attributes.
             const newValueInput = document.createElement('input');
             newValueInput.type = 'text';
             newValueInput.value = value || '';
-            newValueInput.setAttribute('g4-role', 'value');
+            newValueInput.setAttribute('data-g4-role', 'value');
             newValueInput.setAttribute('title', `Value: ${value || ''}`);
 
             // Create the remove button. Clicking it removes the entire row.
@@ -1474,10 +1474,10 @@ class CustomFields {
                 // Remove this row from the container when clicked.
                 container.removeChild(row);
 
-                // Find the closest [g4-role="field"] container, then locate the controller within it.
-                const fieldContainer = container.closest('[g4-role="field"]');
+                // Find the closest [data-g4-role="field"] container, then locate the controller within it.
+                const fieldContainer = container.closest('[data-g4-role="field"]');
                 if (fieldContainer) {
-                    const titleContainer = fieldContainer.querySelector('[g4-role="controller"]');
+                    const titleContainer = fieldContainer.querySelector('[data-g4-role="controller"]');
 
                     // After removing a row, update the values via the callback.
                     callback(titleContainer);
@@ -1498,10 +1498,10 @@ class CustomFields {
         }
 
         /**
-         * Collects all key-value pairs from rows marked with [g4-role="keyvalue"].
+         * Collects all key-value pairs from rows marked with [data-g4-role="keyvalue"].
          * 
          * Process:
-         * 1. Find all elements with [g4-role="keyvalue"] inside the container.
+         * 1. Find all elements with [data-g4-role="keyvalue"] inside the container.
          * 2. Extract the key and value from each row.
          * 3. If the key is non-empty, add the key-value pair to a resulting dictionary.
          * 4. Update the title attributes for each input to reflect the current values.
@@ -1510,14 +1510,14 @@ class CustomFields {
          * @param {HTMLElement} container - The DOM element that contains the key-value input elements.
          */
         function callback(container) {
-            // Find all row elements with [g4-role="keyvalue"].
-            const inputs = container.querySelectorAll('div[g4-role="keyvalue"]');
+            // Find all row elements with [data-g4-role="keyvalue"].
+            const inputs = container.querySelectorAll('div[data-g4-role="keyvalue"]');
             const inputArray = Array.from(inputs);
 
             // Build a dictionary of key-value pairs from the input rows.
             const values = inputArray.reduce((dictionary, input) => {
-                const keyInput = input.querySelector('input[g4-role="key"]');
-                const valueInput = input.querySelector('input[g4-role="value"]');
+                const keyInput = input.querySelector('input[data-g4-role="key"]');
+                const valueInput = input.querySelector('input[data-g4-role="value"]');
 
                 // Extract and trim the key and value. If missing, default to an empty string.
                 const key = keyInput ? keyInput.value.trim() : '';
@@ -1555,14 +1555,14 @@ class CustomFields {
         const fieldContainer = newFieldContainer(inputId, labelDisplayName, title);
 
         // Find the controller container, where the main input and additional rows will be added.
-        const controllerContainer = fieldContainer.querySelector('[g4-role="controller"]');
+        const controllerContainer = fieldContainer.querySelector('[data-g4-role="controller"]');
 
         // Set up the initial HTML structure with a "keyvalue" row and a container for extra rows.
         const html = `
-        <div g4-role="keyvalue" class="text-with-button">
+        <div data-g4-role="keyvalue" class="text-with-button">
             <button type="button" title="Add Key/Value Pair">+</button>
-            <input type="text" g4-role="key" title="Key: ${mainKey}" value="${mainKey}" />
-            <input type="text" g4-role="value" title="Value: ${mainValue}" value="${mainValue}" />
+            <input type="text" data-g4-role="key" title="Key: ${mainKey}" value="${mainKey}" />
+            <input type="text" data-g4-role="value" title="Value: ${mainValue}" value="${mainValue}" />
         </div>
         <div id="${inputId}-input-container"></div>`;
 
@@ -1670,7 +1670,7 @@ class CustomFields {
         const fieldContainer = newFieldContainer(inputId, labelDisplayName, title);
 
         // Select the controller container within the field container.
-        const controllerContainer = fieldContainer.querySelector('[g4-role="controller"]');
+        const controllerContainer = fieldContainer.querySelector('[data-g4-role="controller"]');
 
         // Set the inner HTML of the field container to the constructed dropdown.
         controllerContainer.insertAdjacentHTML('beforeend', html);
@@ -1749,7 +1749,7 @@ class CustomFields {
         const fieldContainer = newFieldContainer(inputId, labelDisplayName, title);
 
         // Select the controller container within the field container.
-        const controllerContainer = fieldContainer.querySelector('[g4-role="controller"]');
+        const controllerContainer = fieldContainer.querySelector('[data-g4-role="controller"]');
 
         // Set the inner HTML of the field container to the constructed input controller.
         controllerContainer.insertAdjacentHTML('beforeend', html);
@@ -1810,7 +1810,7 @@ class CustomFields {
         const fieldContainer = newFieldContainer(inputId, labelDisplayName, title);
 
         // Select the controller container within the field container where the input will be inserted.
-        const controllerContainer = fieldContainer.querySelector('[g4-role="controller"]');
+        const controllerContainer = fieldContainer.querySelector('[data-g4-role="controller"]');
 
         // Insert the constructed input HTML into the controller container.
         controllerContainer.insertAdjacentHTML('beforeend', html);
@@ -2167,7 +2167,7 @@ class CustomFields {
 
         // Create a new div element to contain the title and subtitle.
         const titleContainer = document.createElement('div');
-        titleContainer.setAttribute('g4-role', 'title');
+        titleContainer.setAttribute('data-g4-role', 'title');
 
         // Define the HTML structure for the title, subtitle, and hint icon.
         const html = `
@@ -2180,7 +2180,7 @@ class CustomFields {
             </span>
         </h2>
         <span class="subtitle">${options.subTitleText}</span>
-        <div g4-role="summary"></div>`;
+        <div data-g4-role="summary"></div>`;
 
         // Insert the HTML structure into the title container.
         titleContainer.insertAdjacentHTML('beforeend', html);
@@ -2189,7 +2189,7 @@ class CustomFields {
         const iconElement = titleContainer.querySelector('[role="img"]');
 
         // Select the hint container where the hint text will be toggled.
-        const hintContainer = titleContainer.querySelector('[g4-role="summary"]');
+        const hintContainer = titleContainer.querySelector('[data-g4-role="summary"]');
 
         // Add event listener to the hint icon to toggle the hint text on click.
         iconElement.addEventListener('click', () => switchHint(hintContainer, options.helpText));
