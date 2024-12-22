@@ -1151,7 +1151,6 @@ class CustomG4Fields {
 }
 
 class CustomFields {
-    // TODO: Handle the class - pass it using CSS classes and not hard coded in the element creation.
     /**
      * Creates a new array field that allows users to dynamically add multiple input values.
      * The first input field is initialized with the first value from `options.initialValue` (if any),
@@ -1211,7 +1210,7 @@ class CustomFields {
         const newInput = (options, setCallback) => {
             // Create a div element to serve as the row container for the input and remove button
             const row = document.createElement('div');
-            row.className = 'text-with-button input-row';
+            row.setAttribute('data-g4-role', 'input-row');
 
             // Create the text input field
             const input = document.createElement('input');
@@ -1309,7 +1308,7 @@ class CustomFields {
          * - An empty container (identified by `id="${inputId}-input-container"`) where subsequent inputs will be appended.
          */
         const html = `
-        <div class="text-with-button">
+        <div data-g4-role="input-row">
             <button type="button">+</button>
             <input type="text" data-g4-role="valueitem" title="${mainInputValue}" value="${mainInputValue}" />
         </div>
