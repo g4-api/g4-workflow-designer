@@ -1707,86 +1707,123 @@ class CustomFields {
     }
 
     /**
-     * Creates a labeled text input field inside a given container.
+     * Creates and appends a new name input field with autocomplete functionality to the specified container based on provided options.
+     * The input field utilizes a datalist for alias suggestions and invokes a callback with the current value upon input.
      *
-     * @param {HTMLElement} container    - The parent element where this new field will be appended.
-     * @param {string}      label        - The label for the input, provided in PascalCase (e.g., "UserName").
-     * @param {string}      title        - The tooltip text displayed when hovering over the input field.
-     * @param {string}      initialValue - The initial value that the input field will display.
-     * @param {boolean}     isReadonly   - If true, the input field is set to read-only mode.
-     * @param {Function}    setCallback  - A callback function invoked whenever the input's value changes.
+     * @param {Object}        options                    - Configuration options for the name field.
+     * @param {HTMLElement}   [options.container]        - The DOM element to which the name field will be appended.
+     * @param {string}        options.label              - The identifier for the name field, used for data attributes and labeling.
+     * @param {string}        [options.title]            - The title attribute for the field container, often used for tooltips.
+     * @param {string|number} [options.initialValue='']  - The initial value of the input field. Defaults to an empty string if not provided or invalid.
+     * @param {Object}        options.step               - An object containing step-related configurations.
+     * @param {string}        options.step.pluginName    - The plugin name to be used as a default alias.
+     * @param {Array<string>} [options.step.aliases]     - An array of alias strings to be suggested in the datalist.
+     * @param {boolean}       [options.isReadonly=false] - Determines if the input field is read-only.
+     * @param {Function}      setCallback                - Callback function to handle changes to the input field's value.
+     *
+     * @returns {HTMLElement} The container element that includes the newly created name field.
      */
-    static newNameField(container, label, title, initialValue, step, isReadonly, setCallback) {
-        // Generate a unique ID for the textarea element.
+    static newNameField(options, setCallback) {
+        // Generate a unique identifier for the input field to ensure uniqueness in the DOM.
         const inputId = newUid();
 
-        // Cache the aliases for the current step.
-        const aliases = step.aliases;
+        // Extract aliases from the step configuration if available.
+        const aliases = options.step.aliases;
 
-        // Convert the plugin name from PascalCase to a space-separated format for display.
-        const pluginName = convertPascalToSpaceCase(step.pluginName);
+        // Convert the plugin name from PascalCase to a space-separated format for display purposes.
+        const pluginName = convertPascalToSpaceCase(options.step.pluginName);
 
-        // Convert the label from PascalCase to a space-separated format for display.
-        const labelDisplayName = convertPascalToSpaceCase(label);
+        // Convert the label from PascalCase to a space-separated format for display purposes.
+        const labelDisplayName = convertPascalToSpaceCase(options.label);
 
-        // Set the initial value to an empty string if it is not defined or is NaN.
-        initialValue = !initialValue || initialValue === NaN || initialValue === 'undefined'
+        /**
+         * Validate and sanitize the initial value.
+         * If the initial value is not provided, is NaN, or is the string 'undefined', default it to an empty string.
+         */
+        options.initialValue = (!options.initialValue || options.initialValue === 'undefined')
             ? ''
-            : initialValue;
+            : options.initialValue;
 
-        // Start building the HTML structure for the dropdown field.
+        /**
+         * Construct the HTML string for the input element with the necessary attributes.
+         * - `list`             : Associates the input with a datalist for autocomplete suggestions.
+         * - `data-g4-attribute`: Custom data attribute for identifying the field.
+         * - `title`            : Tooltip text showing the current value or a prompt if empty.
+         * - `type`             : Specifies the input type as text.
+         * - `spellcheck`       : Disables spell checking for the input field.
+         * - `value`            : Sets the initial value of the input field.
+         */
         let html = `
         <input 
             list="${inputId}-aliases" 
-            data-g4-attribute="${label}" 
-            title="${initialValue === '' ? 'Please select a different alias' : initialValue}" 
+            data-g4-attribute="${options.label}" 
+            title="${options.initialValue === '' ? 'Please select a different alias' : options.initialValue}" 
             type="text" 
             spellcheck='false'
-            value='${initialValue}' />`;
+            value='${options.initialValue}' />`;
 
+        /**
+         * If aliases are provided, construct a datalist with options for autocomplete suggestions.
+         * The datalist includes the plugin name as a default option and any additional aliases.
+         */
         if (aliases && aliases.length > 0) {
             html += `
             <datalist id="${inputId}-aliases">
-                <option value="${pluginName}" label="${step.pluginName}">${pluginName}</option>\n`;
+                <option value="${pluginName}" label="${options.step.pluginName}">${pluginName}</option>\n`;
 
-            // Add options to the dropdown for each item.
+            // Iterate over each alias to create corresponding datalist options.
             aliases.forEach(alias => {
                 const formattedAlias = convertPascalToSpaceCase(alias);
-                html += `  <option value="${formattedAlias}" label="${alias}">${convertPascalToSpaceCase(formattedAlias)}</option>\n`;
+                html += `  <option value="${formattedAlias}" label="${alias}">${formattedAlias}</option>\n`;
             });
 
-            // Close the select element in the HTML.
             html += '</datalist>';
         }
 
-        // Create a new field container div with a label and icon.
-        const fieldContainer = newFieldContainer(inputId, labelDisplayName, title);
+        // Create a container for the field using a helper function, passing the unique ID, display label, and title.
+        const fieldContainer = newFieldContainer(inputId, labelDisplayName, options.title);
 
-        // Select the controller container within the field container.
+        // Select the specific sub-container within the field container where the input element will reside.
         const controllerContainer = fieldContainer.querySelector('[data-g4-role="controller"]');
 
-        // Set the inner HTML of the field container to the constructed input controller.
+        // Insert the constructed HTML into the controller container at the end of its current content.
         controllerContainer.insertAdjacentHTML('beforeend', html);
 
-        // Select the input element within the field container
+        // Retrieve the newly inserted input element for further manipulation.
         const input = controllerContainer.querySelector('input');
 
-        // If the field should be read-only, set the 'readonly' attribute on the input
-        if (isReadonly) {
+        /**
+         * If the `isReadonly` option is true, set the `readonly` attribute on the input element
+         * to prevent user modification.
+         */
+        if (options.isReadonly) {
             input.setAttribute('readonly', 'readonly');
         }
 
-        // Add an event listener to handle input changes and invoke the callback with the new value
+        /**
+         * Add an event listener to the field container that listens for input events.
+         * - Updates the `title` attribute of the input to reflect its current value.
+         * - Invokes the `setCallback` function with the new value whenever the input changes.
+         */
         fieldContainer.addEventListener('input', () => {
             input.title = input.value;
             setCallback(input.value);
         });
 
-        // Append the field container to the parent container.
-        container.appendChild(fieldContainer);
+        /**
+         * If a container element is provided in the options, append the entire field container to it.
+         * This allows for flexible placement of the new name field within the DOM.
+         */
+        if (options.container) {
+            options.container.appendChild(fieldContainer);
+        }
 
-        // Return the container for potential further use by the calling code.
-        return container;
+        /**
+         * Return the container that now includes the new name field.
+         * - If an external container was provided, return that container.
+         * - Otherwise, return the newly created field container.
+         */
+        return options.container ? options.container : fieldContainer;
     }
 
     /**
@@ -1953,7 +1990,7 @@ class CustomFields {
          * Validate and sanitize the initial value.
          * If the initial value is not provided, is NaN, or is the string 'undefined', default it to an empty string.
          */
-        options.initialValue = (!options.initialValue || isNaN(options.initialValue) || options.initialValue === 'undefined')
+        options.initialValue = (!options.initialValue || options.initialValue === 'undefined')
             ? ''
             : options.initialValue;
 
@@ -2116,7 +2153,7 @@ class CustomFields {
          * Validate and sanitize the initial value.
          * If the initial value is not provided, not a number, or undefined, default it to an empty string.
          */
-        options.initialValue = (!options.initialValue || isNaN(options.initialValue) || options.initialValue === 'undefined')
+        options.initialValue = (!options.initialValue || options.initialValue === 'undefined')
             ? ''
             : options.initialValue;
 

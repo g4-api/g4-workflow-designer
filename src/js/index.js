@@ -635,12 +635,14 @@ function stepEditorProvider(step, editorContext, _definition) {
 	// Add a string input field for the plugin name.
 	// This field is always read-only.
 	CustomFields.newNameField(
-		container,
-		'Display Name',
-		'A User-Friendly, Descriptive Label for This Input (Displayed in the Flow Designer)',
-		step.name,
-		step,
-		false,
+		{
+			container: container,
+			initialValue: step.name,
+			isReadonly: false,
+			label: 'Plugin Name',
+			title: 'The name of the plugin',
+			step: step
+		},
 		(value) => {
 			// Update the step's name and notify the editor of the change.
 			step.name = value;
