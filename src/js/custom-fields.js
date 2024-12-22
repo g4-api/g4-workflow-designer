@@ -1409,6 +1409,7 @@ class CustomFields {
         return container;
     }
 
+    // TODO: Handle the class - pass it using CSS classes and not hard coded in the element creation.
     /**
      * Creates and appends a new key-value field to the specified container based on the provided options.
      * This field allows users to dynamically add multiple key-value pairs, with each pair consisting of:
@@ -1572,7 +1573,9 @@ class CustomFields {
             }, {});
 
             // Invoke the provided callback function with the dictionary of key-value pairs
-            setCallback(values);
+            if (typeof setCallback === 'function') {
+                setCallback(values);
+            }
         }
 
         // Generate a unique ID for the field and escape it for safe CSS usage
