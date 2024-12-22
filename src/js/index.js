@@ -443,10 +443,12 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 
 	// Add a plugins settings field for configuring the G4 plugins settings.
 	CustomG4Fields.newPluginsSettingsField(
-		container,
-		"G4™ Plugins Settings",
-		"Provide G4™ plugins settings to configure the automation.",
-		definition.properties['pluginsSettings'],
+		{
+			container: container,
+			label: "G4™ Plugins Settings",
+			title: "Provide G4™ plugins settings to configure the automation.",
+			initialValue: definition.properties['pluginsSettings']
+		},
 		(value) => {
 			// Initialize pluginsSettings if it doesn't exist
 			definition.properties['pluginsSettings'] = definition.properties['pluginsSettings'] || {

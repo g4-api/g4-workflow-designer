@@ -998,20 +998,26 @@ class CustomG4Fields {
     }
 
     /**
-     * Creates and appends a new Plugins Settings field to the specified container.
+     * Creates and configures a new Plugins Settings field consisting of:
+     * 1. An array of external repository definitions, each represented as a data object schema.
+     * 2. A switch field to toggle the 'forceRuleReference' property.
+     * 
+     * This field is built by transforming existing external repository data into
+     * standardized schemas, then rendering them in an object array container, followed
+     * by a switch toggle for the 'forceRuleReference' setting.
      *
-     * This field allows users to configure multiple external repositories by specifying
-     * details such as URL, version, authentication credentials, timeout settings, headers,
-     * and capabilities. Users can dynamically add or remove external repository configurations.
+     * @param {Object}       options            - Configuration options for the Plugins Settings field.
+     * @param {HTMLElement} [options.container] - The DOM element to which the Plugins Settings field will be appended.
+     * @param {string}       options.label      - Identifier for the Plugins Settings field, used for display formatting.
+     * @param {string}      [options.title]     - The title attribute for the field container, often used for tooltips.
+     * @param {Object}      [options.initialValue={ externalRepositories: [{}] }] - Initial plugin settings data.
+     *   - `externalRepositories`: An array of objects representing external repositories, each of which is transformed into a data object schema.
+     *   - `forceRuleReference`: A boolean indicating whether rule references should be forced (defaults to `true` if not provided).
+     * @param {Function} setCallback            - A callback function invoked whenever the Plugins Settings field data changes.
      *
-     * @param {HTMLElement} container    - The parent element to which the plugins settings field will be appended.
-     * @param {string}      label        - The display name for the plugins settings field.
-     * @param {string}      title        - The title attribute for the field container, typically used for tooltips.
-     * @param {Object}      initialValue - An object containing initial values for the plugins settings.
-     * @param {Function}    setCallback  - A callback function invoked whenever the plugins settings change.
-     * @returns {HTMLElement} - The parent container with the appended plugins settings field.
+     * @returns {HTMLElement} The container element that includes the newly created Plugins Settings field.
      */
-    static newPluginsSettingsField(container, label, title, initialValue, setCallback) {
+    static newPluginsSettingsField(options, setCallback) {
         /**
          * Generates a data object schema for an external repository.
          *
@@ -1094,7 +1100,7 @@ class CustomG4Fields {
         const inputId = newUid();
 
         // Initialize external repositories with existing data or a default empty object.
-        const externalRepositories = initialValue?.externalRepositories || [{}];
+        const externalRepositories = options.initialValue?.externalRepositories || [{}];
 
         // Prepare an array to hold data object schemas for each external repository.
         const dataObjects = [];
@@ -1108,23 +1114,31 @@ class CustomG4Fields {
             dataObjects.push(schema);
         }
 
+        // Add a new data object schema if no external repositories are provided.
+        if(dataObjects.length === 0) {
+            dataObjects.push(newDataObject(undefined));
+        }
+
         // Configuration options for the object array fields container.
-        const options = {
+        const arrayFieldOptions = {
             addButtonLabel: 'Add External Repository', // Label for the "Add" button.
             dataObjects: dataObjects,                  // Array of data object schemas for initialization.
             groupName: 'ExternalRepositories',         // Group name used for property normalization.
             itemLabel: 'External Repository',          // Label prefix for each array item.
-            labelDisplayName: label,                   // Display name for the container label.
+            labelDisplayName: options.label,           // Display name for the container label.
             removeButtonLabel: 'Remove',               // Label for the "Remove" button.
             role: 'container',                         // Role attribute for identifying elements.
-            title: title                               // Title attribute for the container.
+            title: options.title                       // Title attribute for the container.
         };
 
         // Create the object array fields container with the provided options and callback.
-        const fieldContainer = newObjectArrayFieldsContainer(inputId, options, setCallback);
+        const fieldContainer = newObjectArrayFieldsContainer(inputId, arrayFieldOptions, setCallback);
 
-        // Set the initial forceRuleReference value to true if not provided. 
-        const forceRuleReference = initialValue?.forceRuleReference === null || initialValue?.forceRuleReference === undefined ? true : initialValue?.forceRuleReference;
+        // Set the initial forceRuleReference value to true if not provided.
+        const initialValue = options.initialValue;
+        const isNull = initialValue?.forceRuleReference === null;
+        const isUndefined = initialValue?.forceRuleReference === undefined;
+        const forceRuleReference = isNull || isUndefined ? true : initialValue?.forceRuleReference;
 
         // Append new switch field for ForceRuleReference.
         CustomFields.newSwitchField(
@@ -1143,10 +1157,12 @@ class CustomG4Fields {
         );
 
         // Append the fully constructed plugins settings field container to the provided parent container in the DOM.
-        container.appendChild(fieldContainer);
+        if (options.container) {
+            options.container.appendChild(fieldContainer);
+        }
 
         // Return the parent container with the appended plugins settings field for further manipulation if needed.
-        return container;
+        return options.container ? options.container : fieldContainer;
     }
 }
 
@@ -1508,7 +1524,6 @@ class CustomFields {
         return options.container ? options.container : fieldContainer;
     }
 
-    // TODO: Handle the class - pass it using CSS classes and not hard coded in the element creation.
     /**
      * Creates and appends a new key-value field to the specified container based on the provided options.
      * This field allows users to dynamically add multiple key-value pairs, with each pair consisting of:
