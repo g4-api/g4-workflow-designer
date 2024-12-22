@@ -570,10 +570,12 @@ function stepEditorProvider(step, editorContext, _definition) {
 		// If the parameter is an array, create a new array field.
 		if (isArray) {
 			CustomFields.newArrayField(
-				container,
-				key,
-				parameter.description,
-				parameter.value,
+				{
+					container: container,
+					initialValue: parameter.value,
+					label: key,
+					title: parameter.description
+				},
 				(value) => {
 					// Update the property's value and notify the editor of the change.
 					parameter.value = value;

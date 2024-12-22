@@ -300,12 +300,14 @@ const newObjectArrayFieldsContainer = (id, options, setCallback) => {
         buttonController.type = 'button';
         buttonController.textContent = `${options.removeButtonLabel}`;
         buttonController.style = "margin-top: 1em;";
-        buttonController.onclick = () => {
+
+        // Add an event listener to handle the removal of the array item.
+        buttonController.addEventListener('click', () => {
             controllerContainer.removeChild(arrayContainer);
             setCallback({
                 [indexKey]: null
             });
-        };
+        });
 
         // Create a container for the remove button and append the button to it.
         const buttonContainer = document.createElement('div');
@@ -1149,163 +1151,196 @@ class CustomG4Fields {
 }
 
 class CustomFields {
+    // TODO: Handle the class - pass it using CSS classes and not hard coded in the element creation.
     /**
-     * TODO: add support for item source if the value of the array parameter have value list or other plugin
-     * 
-     * Creates a new array field with an initial input and a "+" button to add more inputs.
-     * Each input can be removed via an "X" button next to it. All non-empty values from
-     * these inputs are passed to a callback function for further processing.
+     * Creates a new array field that allows users to dynamically add multiple input values.
+     * The first input field is initialized with the first value from `options.initialValue` (if any),
+     * and subsequent values are added to a separate container below.
+     * Whenever the field content changes, a callback is invoked with the updated list of values.
      *
-     * @param {HTMLElement} container    - The DOM element where the new array field will be appended.
-     * @param {string}      label        - The label for the field (usually in PascalCase).
-     * @param {string}      title        - The title attribute for the field container, providing tooltips or extra info.
-     * @param {string[]}    initialValue - An array of initial values to populate the first and subsequent inputs.
-     * @param {Function}    setCallback  - A callback function that receives the updated array of non-empty, trimmed values.
+     * @param {Object}         options                  - Configuration options for the array field.
+     * @param {HTMLElement}   [options.container]       - The DOM element to which the array field will be appended.
+     * @param {string}         options.label            - The label identifier for the array field, converted from PascalCase to a space-separated format for display.
+     * @param {string}        [options.title]           - The title attribute for the field container, often used for tooltips.
+     * @param {Array<string>} [options.initialValue=[]] - An array of initial values to populate the field. The first value is used in the main input row, and the rest are added to a separate container.
+     * @param {Function}       setCallback              - Callback function to handle changes to the array field's values.
+     *
+     * @returns {HTMLElement} The container element that includes the newly created array field.
      */
-    static newArrayField(container, label, title, initialValue, setCallback) {
-        // Generate a unique ID for the new field's input elements to prevent collisions.
-        const inputId = newUid();
-        const escapedId = CSS.escape(inputId);
-
+    static newArrayField(options, setCallback) {
         /**
-         * Creates a new input row when the "+" button is clicked.
-         * Locates the container that holds multiple input rows and appends a new one.
-         * 
-         * @returns {HTMLInputElement|undefined} The newly created input element or undefined if container not found.
+         * Creates and appends a new input row within the container that matches the specified ID.
+         *
+         * This function locates the container element using the provided `id`, and then invokes
+         * the `newInput` function to create a new row containing an input field and a remove button.
+         * If the container is not found, the function returns without taking any action.
+         *
+         * @param {string} id - The unique identifier used to locate the input container in the DOM.
+         * @param {Function} setCallback - The callback function to handle updates after creating a new input row.
+         *
+         * @returns {HTMLElement | undefined} The newly created input element, or `undefined` if the container is not found.
          */
-        function newInputCallback() {
-            // Using the escaped ID, locate the container for new inputs.
-            // This container is expected to be inside an element with data-g4-role="controller".
-            const container = document.querySelector(`#${escapedId}-controller > #${escapedId}-input-container`);
+        const newInputCallback = (id, setCallback) => {
+            // Select the container element based on the provided ID, targeting
+            // the controller and the corresponding input container.
+            const container = document.querySelector(`#${id}-controller > #${id}-input-container`);
 
-            // If the container doesn't exist, return early.
+            // If the container does not exist, return early without creating a new input row.
             if (!container) {
                 return;
             }
 
-            // Create a new input row without an initial value and return the created input element.
-            return newInput(container, undefined);
+            // Create and return a new input row within the located container by invoking `newInput`.
+            return newInput({ container: container }, setCallback);
         }
 
         /**
-         * Creates a new input row and appends it to the specified container.
+         * Creates a new row containing an input field and a remove button,
+         * then appends it to the specified container. The input field allows
+         * users to enter a value associated with `data-g4-role="valueitem"`,
+         * and the remove button provides the option to remove the row from
+         * the container.
          *
-         * Each new row contains:
-         * - A text input field for user-entered values.
-         * - A remove (X) button to delete that row.
+         * @param {Object}      options           - Configuration options for the new input row.
+         * @param {HTMLElement} options.container - The DOM element to which the input row will be appended.
+         * @param {string}     [options.value=''] - An optional initial value for the input field.
+         * @param {Function}    setCallback       - A callback function to handle updates after a row is removed.
          *
-         * @param {HTMLElement} container - The container to which the new input row will be added.
-         * @param {string} [value]        - Optional initial value to populate the input field.
-         * @returns {HTMLInputElement} The created input element.
+         * @returns {HTMLInputElement} The newly created input element (for possible further manipulation).
          */
-        function newInput(container, value) {
-            // Create a wrapper div to hold the input and remove button as a single row.
+        const newInput = (options, setCallback) => {
+            // Create a div element to serve as the row container for the input and remove button
             const row = document.createElement('div');
             row.className = 'text-with-button input-row';
 
-            // Create the text input element with optional initial value.
-            const newInput = document.createElement('input');
-            newInput.type = 'text';
-            newInput.value = value || '';
-            newInput.setAttribute('data-g4-role', 'valueitem');
-            newInput.setAttribute('title', value);
+            // Create the text input field
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.value = options.value || '';
+            input.setAttribute('data-g4-role', 'valueitem');
+            input.setAttribute('title', options.value);
 
-            // Create the remove button. Clicking it removes the entire row from the container.
+            // Create the remove button
             const removeButton = document.createElement('button');
             removeButton.type = 'button';
             removeButton.textContent = '-';
-            removeButton.onclick = function () {
-                // On button click, remove the entire row from the container.
-                container.removeChild(row);
 
-                // Find the closest field container by locating the parent with [data-g4-role="field"].
-                // Then select the controller element that contains the inputs.
-                const titleContainer = container.closest('[data-g4-role="field"]').querySelector('[data-g4-role="controller"]');
+            // Add a click event listener to the remove button
+            removeButton.addEventListener('click', () => {
+                // Remove the row from the container
+                options.container.removeChild(row);
 
-                // After removing a row, call the callback to update the values.
-                callback(titleContainer);
-            };
+                // Locate the controller section within the closest field container
+                const titleContainer = options.container
+                    .closest('[data-g4-role="field"]')
+                    .querySelector('[data-g4-role="controller"]');
 
-            // Add the input field and remove button into the newly created row.
+                // Invoke the callback with the updated container
+                callback(titleContainer, setCallback);
+            });
+
+            // Append the remove button and the input to the row
             row.appendChild(removeButton);
-            row.appendChild(newInput);
+            row.appendChild(input);
 
-            // Append the completed row to the specified container.
-            container.appendChild(row);
+            // Finally, append the row to the specified container
+            options.container.appendChild(row);
 
-            // Return the input element for potential further use by calling code.
-            return newInput;
+            // Return the input element in case further actions or manipulations are needed
+            return input;
         }
 
         /**
-         * Gathers values from all inputs within a container that are marked with data-g4-role="valueitem".
-         * Filters out null, undefined, or empty (after trimming whitespace) values.
-         * Sends the resulting array of cleaned values to the provided setCallback() function.
-         * 
-         * @param {HTMLElement} container - The DOM element that contains the input elements.
+         * Processes a list of input elements within the specified container
+         * and invokes the provided callback function with the extracted values.
+         *
+         * Steps:
+         * 1. Locates all input elements that have the attribute data-g4-role="valueitem".
+         * 2. Updates the title attribute of each input to mirror its current value.
+         * 3. Collects all non-empty input values into an array.
+         * 4. Passes this array to the setCallback function for further handling.
+         *
+         * @param {HTMLElement} container   - The DOM element containing the target input elements.
+         * @param {Function}    setCallback - The callback function to handle the processed array of values.
          */
-        function callback(container) {
-            // Find all input elements with the data-g4-role="valueitem" attribute.
+        const callback = (container, setCallback) => {
+            // Retrieve all input elements with data-g4-role="valueitem" within the container
             const inputs = container.querySelectorAll('input[data-g4-role="valueitem"]');
-
-            // Convert the NodeList of inputs to an array for easier processing.
             const inputArray = Array.from(inputs);
 
-            // Extract values from these inputs and filter out null, undefined, or empty strings.
+            // Map over the inputs to update their title attributes and collect their values
             const values = inputArray.map(input => {
+                // Update the title attribute to reflect the current value
                 input.title = input.value;
-                return input.value;
-            }).filter(item => item != null && item.trim() !== '');
 
-            // Pass the filtered values array to the setCallback function for further handling.
+                // Return the trimmed value for possible processing
+                return input.value;
+            }).filter(item => item != null && item.trim() !== ''); // Filter out any null or empty string values
+
+            // Invoke the callback function with the filtered array of values
             setCallback(values);
         }
 
-        // If initial values are provided, populate the first input and create subsequent inputs.
-        const values = initialValue || [];
+        // Generate a unique identifier for this array field to maintain distinctness in the DOM
+        const inputId = newUid();
+
+        // Escape the identifier for safe usage in CSS selectors
+        const escapedId = CSS.escape(inputId);
+
+        // Extract the initial values or default to an empty array if not provided
+        const values = options.initialValue || [];
+
+        // If there are any initial values, use the first one for the main input; otherwise, use an empty string
         const mainInputValue = values.length > 0 ? values.shift() : '';
 
-        // Convert the label from PascalCase to spaced words (e.g., "MyLabel" -> "My Label").
-        const labelDisplayName = convertPascalToSpaceCase(label);
+        // Convert the label from PascalCase to a space-separated format for better readability
+        const labelDisplayName = convertPascalToSpaceCase(options.label);
 
-        // Create a new field container that includes a label, title, and optionally an icon.
-        const fieldContainer = newFieldContainer(inputId, labelDisplayName, title);
+        // Create the primary field container using a helper function
+        const fieldContainer = newFieldContainer(inputId, labelDisplayName, options.title);
 
-        // Within the field container, find the controller container that holds the main input and others.
+        // Select the sub-container within the field container where elements will be inserted
         const controllerContainer = fieldContainer.querySelector('[data-g4-role="controller"]');
 
-        // Set up the initial HTML structure:
-        // - A text input with a "+" button above it.
-        // - A div (input-container) that will hold additional rows created by the "+" button.
+        /**
+         * Construct the main HTML structure:
+         * - A button to add new input rows.
+         * - A text input field initialized with `mainInputValue`.
+         * - An empty container (identified by `id="${inputId}-input-container"`) where subsequent inputs will be appended.
+         */
         const html = `
-            <div class="text-with-button">
-                <button type="button">+</button>
-                <input type="text" data-g4-role="valueitem" title="${mainInputValue}" value="${mainInputValue}" />
-            </div>
-            <div id="${inputId}-input-container"></div>`;
+        <div class="text-with-button">
+            <button type="button">+</button>
+            <input type="text" data-g4-role="valueitem" title="${mainInputValue}" value="${mainInputValue}" />
+        </div>
+        <div id="${inputId}-input-container"></div>`;
 
-        // Insert the initial HTML structure into the controller container.
+        // Insert the constructed HTML block into the controller container
         controllerContainer.insertAdjacentHTML('beforeend', html);
 
-        // Select the "+" button and attach the newInputCallback() to its click event.
+        // Select the "+" button and attach a click event to create new input rows
         const botton = controllerContainer.querySelector('button');
-        botton.addEventListener('click', newInputCallback);
+        botton.addEventListener('click', () => newInputCallback(escapedId));
 
-        // For any remaining values, create additional input rows.
+        // Select the container where additional input rows will be placed
         const inputContainer = fieldContainer.querySelector(`#${escapedId}-input-container`);
+
+        // For each remaining initial value, create an additional input row in the container
         for (let index = 0; index < values.length; index++) {
             const value = values[index];
-            newInput(inputContainer, value);
+            newInput({ container: inputContainer, value: value }, setCallback);
         }
 
-        // Add an event listener to the main container to call callback whenever input changes occur.
-        fieldContainer.addEventListener('input', () => callback(fieldContainer));
+        // Whenever an input event occurs within the field container, update the array of values via callback
+        fieldContainer.addEventListener('input', () => callback(fieldContainer, setCallback));
 
-        // Append the newly created field container (with controller) to the main container.
-        container.appendChild(fieldContainer);
+        // If an external container is provided, append the entire field container to it
+        if (options.container) {
+            options.container.appendChild(fieldContainer);
+        }
 
-        // Return the field container for further manipulation if needed.
-        return container;
+        // Return the container that includes the newly created array field
+        return options.container ? options.container : fieldContainer;
     }
 
     /**
@@ -1561,7 +1596,7 @@ class CustomFields {
             removeButton.className = 'remove-button';
 
             // Define the click event handler for the remove button
-            removeButton.onclick = function () {
+            removeButton.addEventListener('click', () => {
                 // Remove the current row from the container
                 options.container.removeChild(row);
 
@@ -1576,7 +1611,7 @@ class CustomFields {
                     // Invoke the callback to handle the updated key-value pairs
                     callback(titleContainer, setCallback);
                 }
-            };
+            });
 
             // Append the remove button, key input, and value input to the row container
             row.appendChild(removeButton);
@@ -1684,7 +1719,7 @@ class CustomFields {
         const addButton = controllerContainer.querySelector('button');
 
         // Attach an onclick handler that creates a new key-value row when triggered
-        addButton.onclick = () => newInputCallback(escapedId, setCallback);
+        addButton.addEventListener('click', () => newInputCallback(escapedId, setCallback));
 
         // Find the input container where subsequent key-value rows will be appended
         const inputContainer = fieldContainer.querySelector(`#${escapedId}-input-container`);
