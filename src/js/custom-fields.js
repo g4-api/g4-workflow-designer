@@ -378,19 +378,21 @@ const newObjectArrayFieldsContainer = (id, options, setCallback) => {
                         initialValue: mode === 'NEW' ? null : options.property.value,
                         isReadonly: false,
                         label: label,
-                        title: title                        
+                        title: title
                     },
                     (value) => propertyCallback(value, setCallback)
                 );
                 break;
             case 'NUMBER':
                 CustomFields.newNumberField(
-                    container,
-                    label,
-                    title,
-                    mode === 'NEW' ? null : options.property.value,
-                    1,
-                    false,
+                    {
+                        container: container,
+                        initialValue: mode === 'NEW' ? null : options.property.value,
+                        isReadonly: false,
+                        label: label,
+                        step: 1,
+                        title: title
+                    },
                     (value) => propertyCallback(value, setCallback)
                 );
                 break;
@@ -658,12 +660,14 @@ class CustomG4Fields {
 
         // Create a new number input field for the "LoadTimeout".
         CustomFields.newNumberField(
-            controller,
-            "LoadTimeout",
-            "The maximum time (in milliseconds) the driver should wait for a page to load when setting the `IWebDriver.Url` property.",
-            initialValue?.loadTimeout || 60000,
-            1,
-            false,
+            {
+                container: controller,
+                initialValue: initialValue?.loadTimeout || 60000,
+                isReadonly: false,
+                label: 'LoadTimeout',
+                step: 1,
+                title: 'The maximum time (in milliseconds) the driver should wait for a page to load when setting the `IWebDriver.Url` property.',
+            },
             (value) => {
                 const automationSettings = {
                     loadTimeout: value
@@ -674,12 +678,14 @@ class CustomG4Fields {
 
         // Create a new number input field for the "MaxParallel".
         CustomFields.newNumberField(
-            controller,
-            "MaxParallel",
-            "The number of parallel rows to execute actions based on `G4DataProvider`.",
-            initialValue?.maxParallel || 1,
-            1,
-            false,
+            {
+                container: controller,
+                initialValue: initialValue?.maxParallel || 1,
+                isReadonly: false,
+                label: "MaxParallel",
+                step: 1,
+                title: "The number of parallel rows to execute actions based on `G4DataProvider`."
+            },
             (value) => {
                 const automationSettings = {
                     maxParallel: value
@@ -723,12 +729,14 @@ class CustomG4Fields {
 
         // Create a new number input field for the "SearchTimeout".
         CustomFields.newNumberField(
-            controller,
-            "SearchTimeout",
-            "The maximum time (in milliseconds) to wait for an element to be found during searches.",
-            initialValue?.searchTimeout || 15000,
-            1,
-            false,
+            {
+                container: controller,
+                initialValue: initialValue?.searchTimeout || 15000,
+                isReadonly: false,
+                label: "SearchTimeout",
+                title: "The maximum time (in milliseconds) to wait for an element to be found during searches.",
+                step: 1
+            },
             (value) => {
                 const automationSettings = {
                     searchTimeout: value
@@ -1782,69 +1790,99 @@ class CustomFields {
     }
 
     /**
-     * Creates and appends a new number input field to the specified container.
+     * Creates and appends a new number input field to the specified container based on provided options.
+     * The input field handles numeric values with specified steps and invokes a callback with the current value upon input.
      *
-     * @param {HTMLElement}   container     - The parent element to which the number field will be appended.
-     * @param {string}        label         - The identifier for the number field, expected in PascalCase format.
-     * @param {string}        title         - The title attribute for the input element, typically used for tooltips.
-     * @param {string|number} initialValue  - The initial value to populate the input field. Defaults to an empty string if invalid.
-     * @param {number}        step          - The step attribute for the input element, determining the legal number intervals.
-     * @param {boolean}       isReadonly    - Determines if the input field should be read-only.
-     * @param {function}      [setCallback] - An optional callback function invoked whenever the input value changes.
+     * @param {Object}        options                    - Configuration options for the number field.
+     * @param {HTMLElement}   [options.container]        - The DOM element to which the number field will be appended.
+     * @param {string}        options.label              - The identifier for the number field, used for data attributes and labeling.
+     * @param {string}        [options.title]            - The title attribute for the field container, often used for tooltips.
+     * @param {number|string} [options.initialValue='']  - The initial value of the number input. Defaults to an empty string if not provided or invalid.
+     * @param {number}        [options.step=1]           - The increment step for the number input.
+     * @param {boolean}       [options.isReadonly=false] - Determines if the number input is read-only.
+     * @param {Function}      setCallback                - Callback function to handle changes to the number field's value.
+     *
+     * @returns {HTMLElement} The container element that includes the newly created number field.
      */
-    static newNumberField(container, label, title, initialValue, step, isReadonly, setCallback) {
-        // Generate a unique ID for the input element to ensure uniqueness in the DOM.
+    static newNumberField(options, setCallback) {
+        // Generate a unique identifier for the number input to ensure uniqueness in the DOM.
         const inputId = newUid();
 
-        // Convert the label from PascalCase to a space-separated format for user-friendly display.
-        const labelDisplayName = convertPascalToSpaceCase(label);
+        // Convert the label from PascalCase to a space-separated format for display purposes.
+        const labelDisplayName = convertPascalToSpaceCase(options.label);
 
-        // Validate and set the initial value. If invalid (undefined, NaN, or 'undefined'), default to an empty string.
-        initialValue = (!initialValue || isNaN(initialValue) || initialValue === 'undefined') ? '' : initialValue;
+        /**
+         * Validate and sanitize the initial value.
+         * If the initial value is not provided, is NaN, or is the string 'undefined', default it to an empty string.
+         */
+        options.initialValue = (!options.initialValue || isNaN(options.initialValue) || options.initialValue === 'undefined')
+            ? ''
+            : options.initialValue;
 
-        // Construct the HTML string for the number input element with necessary attributes.
+        /**
+         * Construct the HTML string for the input element with the necessary attributes.
+         * - `id`               : Unique identifier for the input.
+         * - `data-g4-attribute`: Custom data attribute for identifying the field.
+         * - `title`            : Tooltip text showing the current value.
+         * - `type`             : Specifies the input type as number.
+         * - `step`             : Defines the legal number intervals for the input.
+         * - `value`            : Sets the initial value of the input field.
+         */
         const html = `
         <input 
             id="${inputId}"
-            data-g4-attribute="${label}" 
-            title="${initialValue}" 
+            data-g4-attribute="${options.label}" 
+            title="${options.initialValue}" 
             type="number" 
-            step="${step}"
-            value="${initialValue}" />`;
+            step="${options.step || 1}"
+            value="${options.initialValue}" />`;
 
-        // Create a new field container div that includes a label and an optional icon.
-        const fieldContainer = newFieldContainer(inputId, labelDisplayName, title);
+        // Create a container for the field using a helper function, passing the unique ID, display label, and title.
+        const fieldContainer = newFieldContainer(inputId, labelDisplayName, options.title);
 
-        // Select the controller container within the field container where the input will be inserted.
+        // Select the specific sub-container within the field container where the input element will reside.
         const controllerContainer = fieldContainer.querySelector('[data-g4-role="controller"]');
 
-        // Insert the constructed input HTML into the controller container.
+        // Insert the input HTML into the controller container at the end of its current content.
         controllerContainer.insertAdjacentHTML('beforeend', html);
 
-        // Retrieve the input element from the controller container for further manipulation.
+        // Retrieve the newly inserted input element for further manipulation.
         const input = controllerContainer.querySelector('input');
 
-        // If the field is marked as read-only, set the 'readonly' attribute on the input element.
-        if (isReadonly) {
+        /**
+         * If the `isReadonly` option is true, set the `readonly` attribute on the input element
+         * to prevent user modification.
+         */
+        if (options.isReadonly) {
             input.setAttribute('readonly', 'readonly');
         }
 
-        // Add an event listener to the field container to handle input events if a callback is provided.
+        /**
+         * If a callback function is provided, add an event listener to handle input events.
+         * - Updates the `title` attribute of the input to reflect its current value.
+         * - Invokes the `setCallback` function with the new value whenever the input changes.
+         */
         if (typeof setCallback === 'function') {
             fieldContainer.addEventListener('input', () => {
-                // Update the title attribute to reflect the current input value, useful for tooltips.
                 input.title = input.value;
-
-                // Invoke the callback function with the new input value.
                 setCallback(input.value);
             });
         }
 
-        // Append the fully constructed field container to the specified parent container in the DOM.
-        container.appendChild(fieldContainer);
+        /**
+         * If a container element is provided in the options, append the entire field container to it.
+         * This allows for flexible placement of the new number field within the DOM.
+         */
+        if (options.container) {
+            options.container.appendChild(fieldContainer);
+        }
 
-        // Return the container for potential further use by the calling code.
-        return container;
+        /**
+         * Return the container that now includes the new number field.
+         * - If an external container was provided, return that container.
+         * - Otherwise, return the newly created field container.
+         */
+        return options.container ? options.container : fieldContainer;
     }
 
     /**
@@ -1892,7 +1930,7 @@ class CustomFields {
 
                 // Hide the vertical scrollbar since content fits within the textarea.
                 textarea.style.overflowY = 'hidden';
-            // If the content exceeds the maximum allowed height:
+                // If the content exceeds the maximum allowed height:
             } else {
                 // Set the textarea height to the maximum height.
                 textarea.style.height = `${maxHeight}px`;
