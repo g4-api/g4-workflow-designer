@@ -1309,104 +1309,169 @@ class CustomFields {
     }
 
     /**
-     * Creates a new dropdown (list field) UI element and appends it to the specified container.
+     * Creates a new data list field (input with datalist) that allows users to type and select an option from a predefined list.
+     * The list of items is derived from the provided `itemSource`, which can be fetched and processed by `getItems`.
      *
-     * @param {HTMLElement}  container    - The parent container to which the field will be added.
-     * @param {string}       label        - The label for the dropdown field.
-     * @param {string}       title        - The tooltip text that appears when hovering over the combo-box.
-     * @param {string}       initialValue - The initial value to populate the input field with.
-     * @param {string|Array} itemsSource  - A string representing the type of items to fetch from the cache,
-     *                                      or an array of options to populate the dropdown.
-     * @param {Function}     setCallback  - A callback function invoked when the user selects an option.
+     * @param {Object}       options                  - Configuration options for the data list field.
+     * @param {HTMLElement} [options.container]       - The DOM element to which the data list field will be appended.
+     * @param {string}       options.label            - The label identifier for the data list field (converted to a space-separated string for display).
+     * @param {string}      [options.title]           - The title attribute for the field container, often used for tooltips.
+     * @param {string}      [options.itemSource]      - The source from which the items are fetched and processed by `getItems`.
+     * @param {string}      [options.initialValue=''] - The initial value shown in the data list input. Defaults to an empty string if not provided or `'undefined'`.
+     * @param {Function}     setCallback              - A callback function invoked whenever the input value changes.
+     *
+     * @returns {HTMLElement} The container element that includes the newly created data list field.
      */
-    static newDataListField(container, label, title, initialValue, itemsSource, setCallback) {
-        const getItems = (itemsSource) => {
-            // Determine the items for the dropdown.
+    static newDataListField(options, setCallback) {
+        /**
+         * Retrieves and processes items from a given source, returning a sorted object of items with their manifest details.
+         *
+         * Depending on the type of `itemSource`, this function performs one of two processes:
+         * 1. **String**: Treats `itemSource` as a key for the `_cache` object, then transforms the retrieved items into a standardized format.
+         * 2. **Array**: Assumes `itemSource` is an array of objects with `name` and `description` properties, and transforms them accordingly.
+         *
+         * The items are finally sorted alphabetically by their keys before being returned.
+         *
+         * @param {string | Array<Object>} itemSource - The source from which items are retrieved and transformed.
+         *   - If a string, it is used as a key to look up items in the `_cache` object.
+         *   - If an array, each array element should have `name` and `description` properties.
+         *
+         * @returns {Object} A sorted object whose keys represent item names or manifest keys,
+         *   and whose values contain corresponding manifest summaries.
+         *
+         * @throws {Error} Throws an error if `itemSource` is not a string or an array.
+         */
+        const getItems = (itemSource) => {
+            // Define a cache object to store items retrieved by key.
             let items;
-            if (typeof itemsSource === 'string') {
-                // Retrieve items from the cache if the source is a string (itemsType).
-                items = (itemsSource in _cache) ? _cache[itemsSource] : {};
+
+            // Check if itemSource is a string (used as a key to retrieve items from _cache)
+            if (typeof itemSource === 'string') {
+                // Retrieve the cached items if the key exists; otherwise default to an empty object
+                items = (itemSource in _cache) ? _cache[itemSource] : {};
+
+                /**
+                 * Transform each item into a standardized format.
+                 * - manifestKey: Extracted from item?.manifest?.key or defaults to 'No key available'.
+                 * - summary    : Extracted from item?.manifest?.summary or defaults to ['No summary available'].
+                 */
                 items = Object.keys(items).reduce((obj, key) => {
                     const item = items[key];
                     const manifestKey = item?.manifest?.key || 'No key available';
                     obj[manifestKey] = { manifest: { summary: item?.manifest?.summary || ['No summary available'] } };
                     return obj;
                 }, {});
-            } else if (Array.isArray(itemsSource)) {
-                // Use the provided array as the list of items.
-                items = itemsSource.reduce((obj, item) => {
+            }
+            // Check if itemSource is an array
+            else if (Array.isArray(itemSource)) {
+                /**
+                 * Transform the array of items into a standardized format.
+                 * - key    : Derived from item.name or defaults to 'No name available'.
+                 * - summary: Extracted from item.description (or can be undefined if not present).
+                 */
+                items = itemSource.reduce((obj, item) => {
                     const key = item.name || 'No name available';
                     obj[key] = { manifest: { summary: item.description } };
                     return obj;
                 }, {});
-            } else {
-                throw new Error('Invalid itemsSource type. Must be a string or an array.');
+            }
+            // If itemSource is neither a string nor an array, throw an error
+            else {
+                throw new Error('Invalid itemSource type. Must be a string or an array.');
             }
 
-            // Sort the items alphabetically by key.
-            items = Object.keys(items).sort().reduce((obj, key) => {
-                obj[key] = items[key];
-                return obj;
-            }, {});
+            /**
+             * Sort the items object by its keys in alphabetical order.
+             * The sorted keys are then used to reconstruct the object in sorted order.
+             */
+            items = Object.keys(items)
+                .sort()
+                .reduce((obj, key) => {
+                    obj[key] = items[key];
+                    return obj;
+                }, {});
 
-            // Return the sorted items.
+            // Return the sorted items object
             return items;
-        }
+        };
 
-        // Generate a unique ID for the textarea element.
+        // Generate a unique ID for the datalist input field to ensure uniqueness in the DOM
         const inputId = newUid();
 
-        // Convert the label from PascalCase to a space-separated format for display.
-        const labelDisplayName = convertPascalToSpaceCase(label);
+        // Convert the label from PascalCase to a space-separated format for display
+        const labelDisplayName = convertPascalToSpaceCase(options.label);
 
-        // Determine the items for the dropdown.
-        const items = getItems(itemsSource);
+        // Retrieve and process items from the provided item source
+        const items = getItems(options.itemSource);
 
-        // Set the initial value to an empty string if it is not defined or is NaN.
-        initialValue = !initialValue || initialValue === NaN || initialValue === 'undefined'
+        // Validate and sanitize the initial value; default to an empty string if invalid or 'undefined'
+        options.initialValue = !options.initialValue || options.initialValue === 'undefined'
             ? ''
-            : initialValue;
+            : options.initialValue;
 
-        // Start building the HTML structure for the dropdown field.
+        /**
+         * Construct the HTML for the input and its associated datalist:
+         * 1. An <input> element with its 'list' attribute referencing the datalist ID.
+         * 2. A <datalist> element containing <option> elements for each item.
+         *    - The first option is a disabled, selected placeholder prompting user selection.
+         *    - Each subsequent option has a value, label, and display text derived from the item data.
+         */
         let html = `
-        <input list="${inputId}-datalist" title="${initialValue === '' ? 'Please select an option' : initialValue}" />
+        <input list="${inputId}-datalist" title="${options.initialValue === '' ? 'Please select an option' : options.initialValue}" />
         <datalist id="${inputId}-datalist">
             <option value="" disabled selected>-- Please select an option --</option>`;
 
-        // Add options to the dropdown for each item.
+        // Iterate over each item key to create the datalist options
         Object.keys(items).forEach(key => {
+            // Retrieve the summary for each item or default to 'No summary available'
             const summary = items[key].manifest?.summary || ['No summary available'];
+
+            // Join the summary array to create a multi-line tooltip
             const hint = summary.join("\n");
+
+            // Create an option element: use 'key' as the value, 'hint' as the label, and display text as a space-separated key
             html += `  <option value="${key}" label="${hint}">${convertPascalToSpaceCase(key)}</option>\n`;
         });
 
-        // Close the select element in the HTML.
+        // Close the datalist element
         html += '</datalist>';
 
-        // Create a new field container div with a label and icon.
-        const fieldContainer = newFieldContainer(inputId, labelDisplayName, title);
+        // Create the main field container, specifying the unique ID, display label, and optional title
+        const fieldContainer = newFieldContainer(inputId, labelDisplayName, options.title);
 
-        // Select the controller container within the field container.
+        // Select the sub-container within the field container where the input/datalist HTML will be appended
         const controllerContainer = fieldContainer.querySelector('[data-g4-role="controller"]');
 
-        // Set the inner HTML of the field container to the constructed dropdown.
+        // Insert the constructed HTML for the input and datalist into the controller container
         controllerContainer.insertAdjacentHTML('beforeend', html);
 
-        // Get a reference to the `select` element within the field container.
+        // Select the newly inserted <input> element for further setup
         const input = controllerContainer.querySelector('input ');
-        input.value = initialValue;
+        // Apply the validated initial value to the input
+        input.value = options.initialValue;
 
-        // Attach an event listener to handle user input and invoke the callback with the selected value.
-        fieldContainer.addEventListener('input', () => {
-            input.title = input.value;
-            setCallback(input.value);
-        });
+        // If a valid callback function is provided, attach an event listener to handle input changes
+        if (typeof setCallback === 'function') {
+            fieldContainer.addEventListener('input', () => {
+                // Update the 'title' attribute to reflect the current value
+                input.title = input.value;
 
-        // Append the field container to the parent container.
-        container.appendChild(fieldContainer);
+                // Invoke the callback with the new value
+                setCallback(input.value);
+            });
+        }
 
-        // Return the field container for further manipulation if needed.
-        return container;
+        // If an external container is provided, append the entire field container to it
+        if (options.container) {
+            options.container.appendChild(fieldContainer);
+        }
+
+        /**
+         * Return the container that now includes the new data list field.
+         * - If an external container was specified, return that container.
+         * - Otherwise, return the newly created field container.
+         */
+        return options.container ? options.container : fieldContainer;
     }
 
     // TODO: Handle the class - pass it using CSS classes and not hard coded in the element creation.

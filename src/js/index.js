@@ -587,13 +587,15 @@ function stepEditorProvider(step, editorContext, _definition) {
 
 		// If the parameter is a list field or an options field, create a dropdown.
 		if (isListField || isOptionsField) {
-			const itemsSource = isListField ? parameter.type : parameter.optionsList;
+			const itemSource = isListField ? parameter.type : parameter.optionsList;
 			CustomFields.newDataListField(
-				container,
-				key,
-				parameter.description,
-				parameter.value,
-				itemsSource,
+				{
+					container: container,
+					initialValue: parameter.value,
+					itemSource: itemSource,
+					label: key,
+					title: parameter.description
+				},
 				(value) => {
 					// Update the property's value and notify the editor of the change.
 					parameter.value = value;
