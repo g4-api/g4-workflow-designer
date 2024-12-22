@@ -1568,7 +1568,6 @@ class CustomFields {
         const newInput = (options, setCallback) => {
             // Create a div element to serve as the row container for the key-value pair
             const row = document.createElement('div');
-            row.className = 'text-with-button input-row';
             row.setAttribute('data-g4-role', 'keyvalue');
 
             // Create the key input field
@@ -1704,7 +1703,7 @@ class CustomFields {
         // 2. A single key-value row if a main key-value pair is available.
         // 3. An empty container for additional rows.
         const html = `
-        <div data-g4-role="keyvalue" class="text-with-button">
+        <div data-g4-role="keyvalue">
             <button type="button" title="Add Key/Value Pair">+</button>
             <input type="text" data-g4-role="key" title="Key: ${mainKey}" value="${mainKey}" />
             <input type="text" data-g4-role="value" title="Value: ${mainValue}" value="${mainValue}" />
