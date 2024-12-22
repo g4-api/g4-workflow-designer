@@ -1608,102 +1608,227 @@ class CustomFields {
     }
 
     /**
-     * Creates a new dropdown (list field) UI element and appends it to the specified container.
+     * Creates and appends a new list (select) field to the specified container based on provided options.
+     * The select field is populated with sorted items, each accompanied by a summary tooltip, and invokes a callback with the selected value upon input.
      *
-     * @param {HTMLElement}  container    - The parent container to which the field will be added.
-     * @param {string}       label        - The label for the dropdown field.
-     * @param {string}       title        - The tooltip text that appears when hovering over the combo-box.
-     * @param {string}       initialValue - The initial value to populate the input field with.
-     * @param {string|Array} itemsSource  - A string representing the type of items to fetch from the cache,
-     *                                      or an array of options to populate the dropdown.
-     * @param {Function}     setCallback  - A callback function invoked when the user selects an option.
+     * @param {Object}                 options                    - Configuration options for the list field.
+     * @param {HTMLElement}            [options.container]        - The DOM element to which the list field will be appended.
+     * @param {string}                 options.label              - The identifier for the list field, used for data attributes and labeling.
+     * @param {string}                 [options.title]            - The title attribute for the field container, often used for tooltips.
+     * @param {string}                 [options.initialValue='']  - The initial selected value of the list field. Defaults to an empty string if not provided or invalid.
+     * @param {string | Array<Object>} options.itemsSource - The source of items to populate the list.
+     *   - If a string, it is used as a key to retrieve items from the `_cache` object.
+     *   - If an array, it should contain objects with `name` and `description` properties.
+     * @param {boolean}                [options.isReadonly=false] - Determines if the select field is read-only.
+     * @param {Function}               setCallback                - Callback function to handle changes to the select field's value.
+     *
+     * @returns {HTMLElement} The container element that includes the newly created list field.
+     *
+     * @throws {Error} Throws an error if `itemsSource` is neither a string nor an array.
+     *
+     * @example
+     *
+     * // Using a string as itemsSource (retrieves from _cache)
+     * const listField = newListField({
+     *   container: document.getElementById('form-container'),
+     *   label: 'pluginList',
+     *   title: 'Select a Plugin',
+     *   initialValue: 'PluginOne',
+     *   itemsSource: 'plugins',
+     *   isReadonly: false
+     * }, (selectedValue) => {
+     *   console.log(`Selected Plugin: ${selectedValue}`);
+     * });
+     *
+     * // Using an array as itemsSource
+     * const pluginsArray = [
+     *   { name: 'PluginOne', description: 'First plugin description' },
+     *   { name: 'PluginTwo', description: 'Second plugin description' },
+     * ];
+     * const listField = newListField({
+     *   container: document.getElementById('form-container'),
+     *   label: 'pluginList',
+     *   title: 'Select a Plugin',
+     *   initialValue: 'PluginTwo',
+     *   itemsSource: pluginsArray,
+     *   isReadonly: false
+     * }, (selectedValue) => {
+     *   console.log(`Selected Plugin: ${selectedValue}`);
+     * });
      */
-    static newListField(container, label, title, initialValue, itemsSource, setCallback) {
+    static newListField(options, setCallback) {
+        /**
+         * Processes the provided items source and returns a sorted object of items with their manifests.
+         *
+         * The function handles two types of `itemsSource`:
+         * 1. **String**: Assumes `itemsSource` is a key to retrieve items from a cache (`_cache`).
+         *    - Extracts the manifest key and summary for each item.
+         *    - Defaults to 'No key available' and ['No summary available'] if properties are missing.
+         * 2. **Array**: Assumes `itemsSource` is an array of item objects.
+         *    - Extracts the name and description for each item.
+         *    - Defaults to 'No name available' if the name property is missing.
+         *
+         * After processing, the function sorts the items alphabetically by their keys.
+         *
+         * @param {string | Array<Object>} itemsSource - The source of items to process.
+         *   - If a string, it is used as a key to retrieve items from the `_cache` object.
+         *   - If an array, it should contain objects with `name` and `description` properties.
+         *
+         * @returns {Object} A sorted object where each key is derived from the item's manifest key or name,
+         *   and each value contains the item's manifest with a summary.
+         *
+         * @throws {Error} Throws an error if `itemsSource` is neither a string nor an array.
+         */
         const getItems = (itemsSource) => {
-            // Determine the items for the dropdown.
+            // Define a variable to hold the items after processing
             let items;
+
+            // Check if itemsSource is a string
             if (typeof itemsSource === 'string') {
-                // Retrieve items from the cache if the source is a string (itemsType).
+                // Retrieve items from the cache using the provided key
+                // If the key does not exist in the cache, default to an empty object
                 items = (itemsSource in _cache) ? _cache[itemsSource] : {};
+
+                /**
+                 * Transform the cached items into a structured object.
+                 * - Each key is derived from the item's manifest key or defaults to 'No key available'.
+                 * - Each value contains the item's manifest with a summary.
+                 */
                 items = Object.keys(items).reduce((obj, key) => {
                     const item = items[key];
+
+                    // Safely access the manifest key; default if unavailable
                     const manifestKey = item?.manifest?.key || 'No key available';
-                    obj[manifestKey] = { manifest: { summary: item?.manifest?.summary || ['No summary available'] } };
+
+                    // Safely access the manifest summary; default if unavailable
+                    obj[manifestKey] = {
+                        manifest: {
+                            summary: item?.manifest?.summary || ['No summary available']
+                        }
+                    };
+
                     return obj;
                 }, {});
-            } else if (Array.isArray(itemsSource)) {
-                // Use the provided array as the list of items.
+            }
+            // Check if itemsSource is an array
+            else if (Array.isArray(itemsSource)) {
+                /**
+                 * Transform the array of items into a structured object.
+                 * - Each key is derived from the item's name or defaults to 'No name available'.
+                 * - Each value contains the item's manifest with a summary derived from the description.
+                 */
                 items = itemsSource.reduce((obj, item) => {
+                    // Safely access the item's name; default if unavailable
                     const key = item.name || 'No name available';
-                    obj[key] = { manifest: { summary: item.description } };
+
+                    // Safely access the item's description; default if unavailable
+                    obj[key] = {
+                        manifest: {
+                            summary: item.description || 'No description available'
+                        }
+                    };
+
+                    // Return the updated object
                     return obj;
                 }, {});
-            } else {
+            }
+            // If itemsSource is neither string nor array, throw an error
+            else {
                 throw new Error('Invalid itemsSource type. Must be a string or an array.');
             }
 
-            // Sort the items alphabetically by key.
-            items = Object.keys(items).sort().reduce((obj, key) => {
-                obj[key] = items[key];
-                return obj;
-            }, {});
+            /**
+             * Sort the items alphabetically by their keys.
+             * - Extracts the keys, sorts them, and reconstructs the items object in sorted order.
+             */
+            items = Object.keys(items)
+                .sort()
+                .reduce((obj, key) => {
+                    obj[key] = items[key];
+                    return obj;
+                }, {});
 
-            // Return the sorted items.
+            // Return the sorted items object
             return items;
-        }
+        };
 
-        // Generate a unique ID for the textarea element.
+        // Generate a unique identifier for the list field to ensure uniqueness in the DOM
         const inputId = newUid();
 
-        // Convert the label from PascalCase to a space-separated format for display.
-        const labelDisplayName = convertPascalToSpaceCase(label);
+        // Convert the label from PascalCase to a space-separated format for display purposes
+        const labelDisplayName = convertPascalToSpaceCase(options.label);
 
-        // Determine the items for the dropdown.
-        const items = getItems(itemsSource);
+        // Process the items source to get a sorted items object
+        const items = getItems(options.itemsSource);
 
-        // Set the initial value to an empty string if it is not defined or is NaN.
-        initialValue = !initialValue || initialValue === NaN || initialValue === 'undefined'
+        /**
+         * Validate and sanitize the initial value.
+         * If the initial value is not provided or is the string 'undefined', default it to an empty string.
+         */
+        options.initialValue = (!options.initialValue || options.initialValue === 'undefined')
             ? ''
-            : initialValue;
+            : options.initialValue;
 
-        // Start building the HTML structure for the dropdown field.
+        /**
+         * Construct the HTML string for the select element with the necessary attributes.
+         * - `title`: Tooltip text showing the current selected value or a prompt if none is selected.
+         * - `type`: Specifies the input type as select.
+         */
         let html = `
-        <select title="${initialValue === '' ? 'Please select an option' : initialValue}">
+        <select title="${options.initialValue === '' ? 'Please select an option' : options.initialValue}"> 
             <option value="" disabled selected>-- Please select an option --</option>`;
 
-        // Add options to the dropdown for each item.
+        /**
+         * Iterate over each key in the sorted items object to create corresponding option elements.
+         * - Each option's value is the key.
+         * - Each option's title attribute contains the summary for tooltip display.
+         * - The displayed text is the key converted from PascalCase to space-separated format.
+         */
         Object.keys(items).forEach(key => {
             const summary = items[key].manifest?.summary || ['No summary available'];
             html += `  <option value="${key}" title="${summary.join("\n")}">${convertPascalToSpaceCase(key)}</option>\n`;
         });
 
-        // Close the select element in the HTML.
+        // Close the select element
         html += '</select>';
 
-        // Create a new field container div with a label and icon.
-        const fieldContainer = newFieldContainer(inputId, labelDisplayName, title);
+        // Create a container for the field using a helper function, passing the unique ID, display label, and title
+        const fieldContainer = newFieldContainer(inputId, labelDisplayName, options.title);
 
-        // Select the controller container within the field container.
+        // Select the specific sub-container within the field container where the select element will reside
         const controllerContainer = fieldContainer.querySelector('[data-g4-role="controller"]');
 
-        // Set the inner HTML of the field container to the constructed dropdown.
+        // Insert the constructed HTML into the controller container at the end of its current content
         controllerContainer.insertAdjacentHTML('beforeend', html);
 
-        // Get a reference to the `select` element within the field container.
+        // Retrieve the newly inserted select element for further manipulation
         const select = controllerContainer.querySelector('select');
-        select.value = initialValue;
+        select.value = options.initialValue;
 
-        // Attach an event listener to handle user input and invoke the callback with the selected value.
+        /**
+         * Add an event listener to the field container that listens for input events.
+         * - Updates the `title` attribute of the select to reflect its current value.
+         * - Invokes the `setCallback` function with the new value whenever the selection changes.
+         */
         fieldContainer.addEventListener('input', () => {
             select.title = select.value;
             setCallback(select.value);
         });
 
-        // Append the field container to the parent container.
-        container.appendChild(fieldContainer);
+        /**
+         * If a container element is provided in the options, append the entire field container to it.
+         * This allows for flexible placement of the new list field within the DOM.
+         */
+        if (options.container) {
+            options.container.appendChild(fieldContainer);
+        }
 
-        // Return the container for potential further use by the calling code.
-        return container;
+        /**
+         * Return the container that now includes the new list field.
+         * - If an external container was provided, return that container.
+         * - Otherwise, return the newly created field container.
+         */
+        return options.container ? options.container : fieldContainer;
     }
 
     /**
