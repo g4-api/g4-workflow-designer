@@ -1410,168 +1410,197 @@ class CustomFields {
     }
 
     /**
-     * Creates a new key-value field in the provided container.
-     * 
-     * This field allows the user to input pairs of keys and values, add new pairs, or remove existing pairs.
-     * The resulting set of key-value pairs is sent to a callback function whenever changes occur.
+     * Creates and appends a new key-value field to the specified container based on the provided options.
+     * This field allows users to dynamically add multiple key-value pairs, with each pair consisting of:
+     * - A key input
+     * - A value input
+     * - A remove button (available after additional pairs are added)
      *
-     * @param {HTMLElement} container    - The DOM element where the new key-value field will be appended.
-     * @param {string}      label        - A label for the field, usually provided in PascalCase (e.g., "MyLabel").
-     * @param {string}      title        - A title (tooltip) for the field container.
-     * @param {Object}      initialValue - An object containing initial key-value pairs.
-     * @param {Function}    setCallback  - A callback function that will be called with the updated dictionary of key-value pairs.
+     * The field invokes a callback function whenever its content changes, passing the current set of key-value pairs.
+     *
+     * @param {Object}       options                  - Configuration options for the key-value field.
+     * @param {HTMLElement} [options.container]       - The DOM element to which the key-value field will be appended.
+     * @param {string}       options.label            - The label identifier for the key-value field (converted from PascalCase to a space-separated format).
+     * @param {string}      [options.title]           - The title attribute for the field container, often used for tooltips.
+     * @param {Object}      [options.initialValue={}] - The initial set of key-value pairs. Defaults to an empty object.
+     * @param {Function}     setCallback              - Callback function to handle updates to the key-value pairs.
+     *
+     * @returns {HTMLElement} The container element that includes the newly created key-value field.
      */
-    static newKeyValueField(container, label, title, initialValue, setCallback) {
-        // Generate a unique ID to associate with this field's elements.
-        const inputId = newUid();
-
-        // Escape the ID for safe use in CSS selectors.
-        const escapedId = CSS.escape(inputId);
-
+    static newKeyValueField(options, setCallback) {
         /**
-         * Adds a new input row for a key-value pair when the "+" button is clicked.
-         * Finds the container that holds multiple input rows and appends a new one.
-         * 
-         * @returns {HTMLDivElement|undefined} The newly created row element, or undefined if the container is not found.
+         * Creates and appends a new key-value input row within the specified container.
+         *
+         * This function locates the input container using the provided `id` and,
+         * if found, invokes the `newInput` function to add a new input row with default values.
+         *
+         * @param {string}   id          - The unique identifier used to locate the input container in the DOM.
+         * @param {Function} setCallback - The callback function to handle updates to the key-value pairs.
+         *
+         * @returns {HTMLElement | undefined} The newly created input row element, or `undefined` if the container is not found.
          */
-        function newInputCallback() {
-            // Locate the container that will hold new input rows, identified by the escaped ID.
-            const container = document.querySelector(`#${escapedId}-controller > #${escapedId}-input-container`);
+        const newInputCallback = (id, setCallback) => {
+            // Select the input container within the controller section using the provided id
+            const container = document.querySelector(`#${id}-controller > #${id}-input-container`);
 
-            // If the container is not found, return without doing anything.
+            // If the container does not exist, exit the function without performing any action
             if (!container) {
                 return;
             }
 
-            // Create a new input row with no initial key/value.
-            return newInput(container, undefined, undefined);
+            // Create and return a new input row within the container by invoking the `newInput` function
+            return newInput({ container }, setCallback);
         }
 
         /**
-         * Creates a new input row with fields for a key and a value, and a remove button.
-         * Each row:
-         * - Has a "key" input field.
-         * - Has a "value" input field.
-         * - Has a remove button to delete the row.
+         * Creates a new key-value input row and appends it to the specified container.
+         * Each row consists of a remove button, a key input field, and a value input field.
+         * The remove button allows the user to delete the specific key-value pair.
          *
-         * @param {HTMLElement} container - The container to which the new input row will be added.
-         * @param {string} [key]          - Optional initial value for the key input field.
-         * @param {string} [value]        - Optional initial value for the value input field.
-         * @returns {HTMLDivElement} The created row element containing the key and value inputs.
+         * @param {Object}       options           - Configuration options for the new input row.
+         * @param {HTMLElement}  options.container - The DOM element to which the input row will be appended.
+         * @param {string}      [options.key='']   - Optional initial value for the key input field.
+         * @param {string}      [options.value=''] - Optional initial value for the value input field.
+         * @param {Function}     setCallback       - Callback function to handle changes after removal of a key-value pair.
+         *
+         * @returns {HTMLElement} The created input row element.
          */
-        function newInput(container, key, value) {
-            // Create a row div for holding the key input, value input, and remove button together.
+        const newInput = (options, setCallback) => {
+            // Create a div element to serve as the row container for the key-value pair
             const row = document.createElement('div');
             row.className = 'text-with-button input-row';
             row.setAttribute('data-g4-role', 'keyvalue');
 
-            // Create the key input and set its initial value and attributes.
+            // Create the key input field
             const newKeyInput = document.createElement('input');
             newKeyInput.type = 'text';
-            newKeyInput.value = key || '';
+            newKeyInput.value = options.key || '';
             newKeyInput.setAttribute('data-g4-role', 'key');
-            newKeyInput.setAttribute('title', `Key: ${key || ''}`);
+            newKeyInput.setAttribute('title', `Key: ${options.key || ''}`);
+            newKeyInput.setAttribute('placeholder', 'Enter key');
 
-            // Create the value input and set its initial value and attributes.
+            // Create the value input field
             const newValueInput = document.createElement('input');
             newValueInput.type = 'text';
-            newValueInput.value = value || '';
+            newValueInput.value = options.value || '';
             newValueInput.setAttribute('data-g4-role', 'value');
-            newValueInput.setAttribute('title', `Value: ${value || ''}`);
+            newValueInput.setAttribute('title', `Value: ${options.value || ''}`);
+            newValueInput.setAttribute('placeholder', 'Enter value');
 
-            // Create the remove button. Clicking it removes the entire row.
+            // Create the remove button to delete the key-value pair
             const removeButton = document.createElement('button');
             removeButton.type = 'button';
             removeButton.textContent = '-';
             removeButton.title = "Remove Key/Value Pair";
-            removeButton.onclick = function () {
-                // Remove this row from the container when clicked.
-                container.removeChild(row);
+            removeButton.className = 'remove-button';
 
-                // Find the closest [data-g4-role="field"] container, then locate the controller within it.
-                const fieldContainer = container.closest('[data-g4-role="field"]');
+            // Define the click event handler for the remove button
+            removeButton.onclick = function () {
+                // Remove the current row from the container
+                options.container.removeChild(row);
+
+                // Find the closest parent container with the role "field"
+                const fieldContainer = options.container.closest('[data-g4-role="field"]');
+
+                // If a field container is found, locate the controller section
                 if (fieldContainer) {
+                    // Within the field container, find the controller section
                     const titleContainer = fieldContainer.querySelector('[data-g4-role="controller"]');
 
-                    // After removing a row, update the values via the callback.
-                    callback(titleContainer);
+                    // Invoke the callback to handle the updated key-value pairs
+                    callback(titleContainer, setCallback);
                 }
             };
 
-            // Append the remove button, key input, and value input into the row.
-            // Note: The order is remove button first, then key, then value, but can be adjusted as needed.
+            // Append the remove button, key input, and value input to the row container
             row.appendChild(removeButton);
             row.appendChild(newKeyInput);
             row.appendChild(newValueInput);
 
-            // Add the completed row to the container.
-            container.appendChild(row);
+            // Append the completed row to the specified container
+            options.container.appendChild(row);
 
-            // Return the row element in case further processing is needed by the caller.
+            // Return the newly created row element for potential further manipulation
             return row;
         }
 
         /**
-         * Collects all key-value pairs from rows marked with [data-g4-role="keyvalue"].
-         * 
-         * Process:
-         * 1. Find all elements with [data-g4-role="keyvalue"] inside the container.
-         * 2. Extract the key and value from each row.
-         * 3. If the key is non-empty, add the key-value pair to a resulting dictionary.
-         * 4. Update the title attributes for each input to reflect the current values.
-         * 5. Pass the final dictionary of pairs to setCallback().
+         * Processes the key-value input rows within the specified container and invokes the callback with the current key-value pairs.
          *
-         * @param {HTMLElement} container - The DOM element that contains the key-value input elements.
+         * This function performs the following steps:
+         * 1. Selects all key-value input rows within the container.
+         * 2. Iterates over each input row to extract and sanitize the key and value.
+         * 3. Builds a dictionary of key-value pairs, excluding entries with empty keys.
+         * 4. Updates the title attributes of the input fields to reflect their current values.
+         * 5. Invokes the provided `setCallback` function with the resulting dictionary.
+         *
+         * @param {HTMLElement} container   - The DOM element that contains the key-value input elements.
+         * @param {Function}    setCallback - The callback function to handle the processed key-value pairs.
          */
-        function callback(container) {
-            // Find all row elements with [data-g4-role="keyvalue"].
+        const callback = (container, setCallback) => {
+            // Select all div elements with data-g4-role="keyvalue" within the container
             const inputs = container.querySelectorAll('div[data-g4-role="keyvalue"]');
             const inputArray = Array.from(inputs);
 
-            // Build a dictionary of key-value pairs from the input rows.
+            // Reduce the array of input rows into a dictionary of key-value pairs
             const values = inputArray.reduce((dictionary, input) => {
+                // Select the key input field within the current input row
                 const keyInput = input.querySelector('input[data-g4-role="key"]');
+
+                // Select the value input field within the current input row
                 const valueInput = input.querySelector('input[data-g4-role="value"]');
 
-                // Extract and trim the key and value. If missing, default to an empty string.
+                // Retrieve and trim the value from the key input field; default to an empty string if not found
                 const key = keyInput ? keyInput.value.trim() : '';
-                const val = valueInput ? valueInput.value.trim() : '';
 
-                // Only add the pair if the key is not empty.
+                // Retrieve and trim the value from the value input field; default to an empty string if not found
+                const value = valueInput ? valueInput.value.trim() : '';
+
+                // If the key is not empty, add it to the dictionary with its corresponding value
                 if (key !== '') {
-                    dictionary[key] = val;
+                    dictionary[key] = value;
                 }
 
-                // Update the title attributes for better tooltip/context information.
+                // Update the title attribute of the key input field to reflect the current key
                 if (keyInput) keyInput.title = key;
-                if (valueInput) valueInput.title = val;
 
+                // Update the title attribute of the value input field to reflect the current value
+                if (valueInput) valueInput.title = value;
+
+                // Return the updated dictionary of key-value pairs
                 return dictionary;
             }, {});
 
-            // Pass the dictionary to the setCallback function.
+            // Invoke the provided callback function with the dictionary of key-value pairs
             setCallback(values);
         }
 
-        // If initialValue is provided, populate the first input and create subsequent inputs.
-        const values = initialValue || {};
+        // Generate a unique ID for the field and escape it for safe CSS usage
+        const inputId = newUid();
+        const escapedId = CSS.escape(inputId);
+
+        // Extract the initial key-value pairs from the options or default to an empty object
+        const values = options.initialValue || {};
         const keys = Object.keys(values);
 
-        // The main field will get the first key-value pair (if any).
+        // Determine if there is at least one key to populate the main key-value row
         const mainInputKey = keys.length > 0 ? keys.shift() : '';
         const mainKey = mainInputKey || '';
         const mainValue = mainInputKey ? values[mainInputKey] : '';
 
-        // Convert the label from PascalCase to spaced words for readability.
-        const labelDisplayName = convertPascalToSpaceCase(label);
+        // Convert the provided label from PascalCase to a more readable space-separated format
+        const labelDisplayName = convertPascalToSpaceCase(options.label);
 
-        // Create a new field container with a label, title, and optionally an icon.
-        const fieldContainer = newFieldContainer(inputId, labelDisplayName, title);
+        // Create the primary field container using a helper function
+        const fieldContainer = newFieldContainer(inputId, labelDisplayName, options.title);
 
-        // Find the controller container, where the main input and additional rows will be added.
+        // Select the controller container within the field container where elements will be added
         const controllerContainer = fieldContainer.querySelector('[data-g4-role="controller"]');
 
-        // Set up the initial HTML structure with a "keyvalue" row and a container for extra rows.
+        // Prepare the initial HTML structure with:
+        // 1. A "+" button to add new key-value pairs.
+        // 2. A single key-value row if a main key-value pair is available.
+        // 3. An empty container for additional rows.
         const html = `
         <div data-g4-role="keyvalue" class="text-with-button">
             <button type="button" title="Add Key/Value Pair">+</button>
@@ -1580,31 +1609,37 @@ class CustomFields {
         </div>
         <div id="${inputId}-input-container"></div>`;
 
-        // Insert the initial row and container into the controller.
+        // Insert the constructed HTML into the controller container
         controllerContainer.insertAdjacentHTML('beforeend', html);
 
-        // Attach the event handler for the "+" button.
+        // Select the "+" button from the newly inserted HTML
         const addButton = controllerContainer.querySelector('button');
-        addButton.addEventListener('click', newInputCallback);
 
-        // Add the entire field container to the main container.
-        container.appendChild(fieldContainer);
+        // Attach an onclick handler that creates a new key-value row when triggered
+        addButton.onclick = () => newInputCallback(escapedId, setCallback);
 
-        // For any remaining keys, create additional input rows.
+        // Find the input container where subsequent key-value rows will be appended
         const inputContainer = fieldContainer.querySelector(`#${escapedId}-input-container`);
+
+        // For each remaining key in the initial values, create additional key-value rows
         for (let i = 0; i < keys.length; i++) {
             const key = keys[i];
             const value = values[key];
-            newInput(inputContainer, key, value);
+            newInput({ container: inputContainer, key, value }, setCallback);
         }
 
-        // Listen for changes and update values whenever the user types in any input field.
+        // Whenever an input event occurs (typing, etc.), process the updated field content
         fieldContainer.addEventListener('input', () => {
-            callback(fieldContainer);
+            callback(fieldContainer, setCallback);
         });
 
-        // Return the field container for potential further use by the calling code.
-        return fieldContainer;
+        // If a container is provided in options, append the field container to it
+        if (options.container) {
+            options.container.appendChild(fieldContainer);
+        }
+
+        // Return the container that holds the new key-value field
+        return options.container ? options.container : fieldContainer;
     }
 
     /**
@@ -1806,14 +1841,16 @@ class CustomFields {
         select.value = options.initialValue;
 
         /**
-         * Add an event listener to the field container that listens for input events.
-         * - Updates the `title` attribute of the select to reflect its current value.
-         * - Invokes the `setCallback` function with the new value whenever the selection changes.
+         * If a callback function is provided, add an event listener to handle input events.
+         * - Updates the `title` attribute of the input to reflect its current value.
+         * - Invokes the `setCallback` function with the new value whenever the input changes.
          */
-        fieldContainer.addEventListener('input', () => {
-            select.title = select.value;
-            setCallback(select.value);
-        });
+        if (typeof setCallback === 'function') {
+            fieldContainer.addEventListener('input', () => {
+                select.title = select.value;
+                setCallback(select.value);
+            });
+        }
 
         /**
          * If a container element is provided in the options, append the entire field container to it.
@@ -1926,14 +1963,16 @@ class CustomFields {
         }
 
         /**
-         * Add an event listener to the field container that listens for input events.
+         * If a callback function is provided, add an event listener to handle input events.
          * - Updates the `title` attribute of the input to reflect its current value.
          * - Invokes the `setCallback` function with the new value whenever the input changes.
          */
-        fieldContainer.addEventListener('input', () => {
-            input.title = input.value;
-            setCallback(input.value);
-        });
+        if (typeof setCallback === 'function') {
+            fieldContainer.addEventListener('input', () => {
+                input.title = input.value;
+                setCallback(input.value);
+            });
+        }
 
         /**
          * If a container element is provided in the options, append the entire field container to it.
@@ -2148,13 +2187,14 @@ class CustomFields {
             textareaElement.setAttribute('readonly', 'readonly');
         }
 
-        // If a callback function is provided, add an event listener to handle input events.
+        /**
+         * If a callback function is provided, add an event listener to handle changes to the select field.
+         * - Updates the `title` attribute of the select to reflect its current value.
+         * - Invokes the `setCallback` function with the new value whenever the selection changes.
+         */
         if (typeof setCallback === 'function') {
             fieldContainer.addEventListener('input', () => {
-                // Update the title attribute to reflect the current value of the textarea.
                 textareaElement.title = textareaElement.value;
-
-                // Invoke the callback with the current value of the textarea, which also adjusts its height.
                 callback(textareaElement);
             });
         }

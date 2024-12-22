@@ -530,10 +530,12 @@ function stepEditorProvider(step, editorContext, _definition) {
 
 		if (isKeyValue) {
 			CustomFields.newKeyValueField(
-				container,
-				key,
-				parameter.description,
-				parameter.value,
+				{
+					container: container,
+					initialValue: parameter.value,
+					label: key,
+					title: parameter.description
+				},
 				(value) => {
 					// Update the property's value and notify the editor of the change.
 					parameter.value = value;
