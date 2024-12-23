@@ -961,7 +961,7 @@ class CustomG4Fields {
      * @param {Function}    setCallback  - A callback function invoked whenever the performance points settings change.
      * @returns {HTMLElement} - The parent container with the appended performance points settings field.
      */
-    static newPerformancePointsSettingsField(container, label, title, initialValue, setCallback) {
+    static newPerformancePointsSettingsField(options, setCallback) {
         // Generate a unique identifier for the performance points settings fields.
         const inputId = newUid();
 
@@ -969,7 +969,7 @@ class CustomG4Fields {
         const escapedId = CSS.escape(inputId);
 
         // Create a container with multiple performance points settings fields using the provided ID, label, and title.
-        const fieldContainer = newMultipleFieldsContainer(inputId, label, title, 'container');
+        const fieldContainer = newMultipleFieldsContainer(inputId, options.label, options.title, 'container');
 
         // Select the controller sub-container within the field container using the escaped unique ID.
         const controller = fieldContainer.querySelector(`#${escapedId}-container`);
@@ -978,7 +978,7 @@ class CustomG4Fields {
         CustomFields.newSwitchField(
             {
                 container: controller,
-                initialValue: initialValue?.returnPerformancePoints || false,
+                initialValue: options.initialValue?.returnPerformancePoints || false,
                 label: 'ReturnPerformancePoints',
                 title: 'Indicates whether the performance points should be returned in the response.'
             },
@@ -991,10 +991,12 @@ class CustomG4Fields {
         );
 
         // Append the fully constructed performance points settings field container to the provided parent container in the DOM.
-        container.appendChild(fieldContainer);
+        if (options.container) {
+            options.container.appendChild(fieldContainer);
+        }
 
         // Return the parent container with the appended performance points settings field for further manipulation if needed.
-        return container;
+        return options.container ? options.container : fieldContainer;
     }
 
     /**
@@ -1115,7 +1117,7 @@ class CustomG4Fields {
         }
 
         // Add a new data object schema if no external repositories are provided.
-        if(dataObjects.length === 0) {
+        if (dataObjects.length === 0) {
             dataObjects.push(newDataObject(undefined));
         }
 

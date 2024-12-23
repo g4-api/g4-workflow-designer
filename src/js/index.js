@@ -423,10 +423,12 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 
 	// Add a performance points settings field for configuring the G4 performance points settings.
 	CustomG4Fields.newPerformancePointsSettingsField(
-		container,
-		"G4™ Performance Points Settings",
-		"Provide G4™ performance points settings to configure the automation.",
-		definition.properties['performancePointsSettings'],
+		{
+			container: container,
+			label: "G4™ Performance Points Settings",
+			title: "Provide G4™ performance points settings to configure the automation.",
+			initialValue: definition.properties['performancePointsSettings']
+		},
 		(value) => {
 			// Ensure the "performancePointsSettings" property exists in the definition.
 			definition.properties['performancePointsSettings'] = definition.properties['performancePointsSettings'] || {};
