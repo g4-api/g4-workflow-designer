@@ -363,10 +363,12 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 
 	// Add an environment settings field for configuring the G4 environment settings.
 	CustomG4Fields.newEnvironmentSettingsField(
-		container,
-		"G4™ Environment Settings",
-		"Provide G4™ environment settings to configure the automation.",
-		definition.properties['environmentSettings'],
+		{
+			container: container,
+			label: "G4™ Environment Settings",
+			title: "Provide G4™ environment settings to configure the automation.",
+			initialValue: definition.properties['environmentSettings']
+		},
 		(value) => {
 			// Ensure the "environmentSettings" property exists in the definition.
 			definition.properties['environmentSettings'] = definition.properties['environmentSettings'] || {};

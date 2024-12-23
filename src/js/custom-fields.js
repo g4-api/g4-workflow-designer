@@ -755,19 +755,24 @@ class CustomG4Fields {
     }
 
     /**
-     * Creates and appends a new Environment Settings field to the specified container.
+     * Creates and configures a new Environment Settings field that allows users to:
+     * 1. Specify a default environment for automation requests.
+     * 2. Toggle whether the environment should be returned in the response.
+     * 3. Define key-value pairs for environment variables.
      *
-     * This field includes sub-fields for Default Environment, Return Environment, and Environment Variables,
-     * allowing users to configure environment-related settings for automation requests.
+     * @param {Object}       options               - Configuration options for the Environment Settings field.
+     * @param {HTMLElement} [options.container]    - The DOM element to which the Environment Settings field will be appended.
+     * @param {string}       options.label         - The label identifier for the Environment Settings field.
+     * @param {string}      [options.title]        - The title attribute for the field container, often used for tooltips.
+     * @param {Object}      [options.initialValue] - The initial settings values for environment configuration.
+     * @param {string}      [options.initialValue.defaultEnvironment='SystemParameters'] - Specifies the default environment.
+     * @param {boolean}     [options.initialValue.returnEnvironment=false]               - Indicates whether the environment should be returned in the response.
+     * @param {Object}      [options.initialValue.environmentVariables={}]               - A collection of static environment variables.
+     * @param {Function}     setCallback - A callback function invoked whenever the Environment Settings field data changes.
      *
-     * @param {HTMLElement} container    - The parent element to which the environment settings field will be appended.
-     * @param {string}      label        - The identifier for the environment settings field, expected in PascalCase format.
-     * @param {string}      title        - The title attribute for the field container, typically used for tooltips.
-     * @param {Object}      initialValue - An object containing initial values for the environment settings.
-     * @param {Function}    setCallback  - A callback function invoked whenever any of the environment settings change.
-     * @returns {HTMLElement} - The parent container with the appended environment settings field.
+     * @returns {HTMLElement} The container element that includes the newly created Environment Settings field.
      */
-    static newEnvironmentSettingsField(container, label, title, initialValue, setCallback) {
+    static newEnvironmentSettingsField(options, setCallback) {
         // Generate a unique identifier for the environment settings fields.
         const inputId = newUid();
 
@@ -775,7 +780,7 @@ class CustomG4Fields {
         const escapedId = CSS.escape(inputId);
 
         // Create a container with multiple environment settings fields using the provided ID, label, and title.
-        const fieldContainer = newMultipleFieldsContainer(inputId, label, title, 'container');
+        const fieldContainer = newMultipleFieldsContainer(inputId, options.label, options.title, 'container');
 
         // Select the controller sub-container within the field container using the escaped unique ID.
         const controller = fieldContainer.querySelector(`#${escapedId}-container`);
@@ -784,15 +789,17 @@ class CustomG4Fields {
         CustomFields.newStringField(
             {
                 container: controller,
-                initialValue: initialValue?.defaultEnvironment || 'SystemParameters',
+                initialValue: options.initialValue?.defaultEnvironment || 'SystemParameters',
                 isReadonly: false,
                 label: 'DefaultEnvironment',
                 title: 'The default environment to use for automation requests.'
             },
             (value) => {
+                // Build an object containing the updated default environment value
                 const environmentSettings = {
                     defaultEnvironment: value
                 };
+                // Invoke the main callback function with updated settings
                 setCallback(environmentSettings);
             }
         );
@@ -801,37 +808,45 @@ class CustomG4Fields {
         CustomFields.newSwitchField(
             {
                 container: controller,
-                initialValue: initialValue?.returnEnvironment || false,
+                initialValue: options.initialValue?.returnEnvironment || false,
                 label: 'ReturnEnvironment',
                 title: 'Indicates whether the environment should be returned in the response.'
             },
             (value) => {
+                // Convert the string value ('true'/'false') to a boolean
                 const environmentSettings = {
                     returnEnvironment: convertStringToBool(value)
                 };
+                // Invoke the main callback function with updated settings
                 setCallback(environmentSettings);
             }
         );
 
         // Create a new key-value field for Environment Variables.
         CustomFields.newKeyValueField(
-            controller,
-            "EnvironmentVariables",
-            "A list of static environment variables to use for automation requests.",
-            initialValue?.environmentVariables || {},
+            {
+                container: controller,
+                initialValue: options.initialValue?.environmentVariables || {},
+                label: 'EnvironmentVariables',
+                title: 'A list of static environment variables to use for automation requests.'
+            },
             (value) => {
+                // Build an object containing the updated environment variables
                 const environmentSettings = {
                     environmentVariables: value
                 };
+                // Invoke the main callback function with updated settings
                 setCallback(environmentSettings);
             }
         );
 
         // Append the fully constructed environment settings field container to the provided parent container in the DOM.
-        container.appendChild(fieldContainer);
+        if (options.container) {
+            options.container.appendChild(fieldContainer);
+        }
 
         // Return the parent container with the appended environment settings field for further manipulation if needed.
-        return container;
+        return options.container ? options.container : fieldContainer;
     }
 
     /**
