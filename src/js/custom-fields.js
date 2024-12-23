@@ -540,29 +540,26 @@ newUid = () => Math.ceil(Math.random() * 10 ** 16).toString(16);
 
 class CustomG4Fields {
     /**
-     * Creates a new authentication field within the specified container for the G4 Automation Sequence.
+     * Creates a new authentication field that provides input fields for a G4™ username and password.
      *
-     * This function generates a structured set of input fields for providing G4 credentials,
-     * specifically username and password. It utilizes the CustomFields utility to create
-     * the input elements and sets up an event listener to handle input changes, invoking
-     * the provided callback with the updated credential values.
+     * This method does the following:
+     * 1. Generates a unique identifier for the authentication fields.
+     * 2. Creates a container with multiple fields (username and password).
+     * 3. Inserts string fields for "Username" and "Password," each with an optional initial value.
+     * 4. Invokes a callback function whenever the username or password changes.
      *
-     * @param {HTMLElement} container    - The parent DOM element to which the authentication fields will be appended.
-     * @param {string}      label        - The display label for the authentication section.
-     * @param {string}      title        - The tooltip text providing additional information about the authentication fields.
-     * @param {Object}      initialValue - An object containing the initial values for the authentication fields (e.g., { username: 'user', password: 'pass' }).
-     * @param {Function}    setCallback  - A callback function that is invoked whenever the authentication fields are updated. It receives an object with the updated username and password.
+     * @param {Object}       options                           - Configuration options for the authentication field.
+     * @param {HTMLElement} [options.container]                - The DOM element to which this field will be appended.
+     * @param {string}       options.label                     - A label identifier for this field container.
+     * @param {string}      [options.title]                    - An optional title (tooltip) for the field container.
+     * @param {Object}      [options.initialValue]             - An object containing initial settings (e.g., username, password).
+     * @param {string}      [options.initialValue.username=''] - Initial username value.
+     * @param {string}      [options.initialValue.password=''] - Initial password value.
+     * @param {Function}     setCallback                       - A callback function invoked whenever one of the inputs changes.
      *
-     * @example
-     * const container = document.getElementById('auth-container');
-     * const initialCredentials = { username: 'admin', password: 'secret' };
-     * const handleAuthChange = (credentials) => {
-     *     console.log('Updated Credentials:', credentials);
-     * };
-     *
-     * newAuthenticationField(container, 'G4 Authentication', 'Provide G4 credentials to allow automation requests.', initialCredentials, handleAuthChange);
+     * @returns {HTMLElement} The container element that includes the newly created authentication field.
      */
-    static newAuthenticationField(container, label, title, initialValue, setCallback) {
+    static newAuthenticationField(options, setCallback) {
         // Generate a unique identifier for the authentication fields.
         const inputId = newUid();
 
@@ -570,7 +567,7 @@ class CustomG4Fields {
         const id = CSS.escape(inputId);
 
         // Create a container with multiple fields (e.g., username and password) using the provided ID, label, and title.
-        const fieldContainer = newMultipleFieldsContainer(inputId, label, title, 'container');
+        const fieldContainer = newMultipleFieldsContainer(inputId, options.label, options.title, 'container');
 
         // Select the controller sub-container within the field container using the unique ID.
         const controller = fieldContainer.querySelector(`#${id}-container`);
@@ -579,15 +576,17 @@ class CustomG4Fields {
         CustomFields.newStringField(
             {
                 container: controller,
-                initialValue: initialValue?.username || '',
+                initialValue: options.initialValue?.username || '',
                 isReadonly: false,
                 label: 'Username',
                 title: 'A valid G4™ username required for authentication.'
             },
             (value) => {
+                // Build an authentication object containing the updated username
                 const authentication = {
                     username: value
                 };
+                // Invoke the main callback function with the updated username
                 setCallback(authentication);
             }
         );
@@ -596,15 +595,17 @@ class CustomG4Fields {
         CustomFields.newStringField(
             {
                 container: controller,
-                initialValue: initialValue?.password || '',
+                initialValue: options.initialValue?.password || '',
                 isReadonly: false,
                 label: 'Password',
                 title: 'A valid G4™ password required for authentication.'
             },
             (value) => {
+                // Build an authentication object containing the updated password
                 const authentication = {
                     password: value
                 };
+                // Invoke the main callback function with the updated password
                 setCallback(authentication);
             }
         );
@@ -613,10 +614,12 @@ class CustomG4Fields {
         fieldContainer.appendChild(controller);
 
         // Append the fully constructed field container to the provided parent container in the DOM.
-        container.appendChild(fieldContainer);
+        if (options.container) {
+            options.container.appendChild(fieldContainer);
+        }
 
         // Return the field container for further manipulation if needed.
-        return container;
+        return options.container ? options.container : fieldContainer;
     }
 
     /**

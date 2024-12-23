@@ -323,10 +323,12 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 
 	// Add an authentication field for providing G4 credentials to allow automation requests.
 	CustomG4Fields.newAuthenticationField(
-		container,
-		"G4™ Authentication",                                    // Label for the authentication section.
-		"Provide G4™ credentials to allow automation requests.", // Description tooltip for the authentication section.
-		definition.properties['authentication'],                 // Current value of the "authentication" property.
+		{
+			container: container,
+			label: "G4™ Authentication",
+			title: "Provide G4™ credentials to allow automation requests.",
+			initialValue: definition.properties['authentication']
+		},
 		(value) => {
 			// Ensure the "authentication" property exists in the definition.
 			definition.properties['authentication'] = definition.properties['authentication'] || {};
