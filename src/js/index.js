@@ -325,7 +325,7 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 	CustomG4Fields.newAuthenticationField(
 		{
 			container: container,
-			label: "G4™ Authentication",
+			label: "Authentication",
 			title: "Provide G4™ credentials to allow automation requests.",
 			initialValue: definition.properties['authentication']
 		},
@@ -336,6 +336,28 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 			// Update the "authentication" property with the new values from the input.
 			for (const key of Object.keys(value)) {
 				definition.properties['authentication'][key] = value[key];
+			}
+
+			// Notify the editor of the updated properties.
+			editorContext.notifyPropertiesChanged();
+		}
+	);
+
+	// Add a data source field for configuring the G4 data source settings.
+	CustomG4Fields.newDataSourceField(
+		{
+			container: container,
+			label: "Data Source",
+			title: "Provide G4™ data source to configure the automation.",
+			initialValue: definition.properties['dataSource']
+		},
+		(value) => {
+			// Ensure the "dataSource" property exists in the definition.
+			definition.properties['dataSource'] = definition.properties['dataSource'] || {};
+
+			// Update the "dataSource" property with the new values from the input.
+			for (const key of Object.keys(value)) {
+				definition.properties['dataSource'][key] = value[key];
 			}
 
 			// Notify the editor of the updated properties.
