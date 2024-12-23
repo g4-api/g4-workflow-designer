@@ -835,52 +835,67 @@ class CustomG4Fields {
     }
 
     /**
-     * Creates and appends a new Exceptions Settings field to the specified container.
+     * Creates and configures a new Exceptions Settings field, allowing users to toggle
+     * whether exceptions should be returned in the response.
      *
-     * This field includes a sub-field for Return Exceptions, allowing users to configure
-     * whether exceptions should be returned in the response for automation requests.
+     * @param {Object}       options               - Configuration options for the Exceptions Settings field.
+     * @param {HTMLElement} [options.container]    - The DOM element to which the Exceptions Settings field will be appended.
+     * @param {string}       options.label         - The label identifier for the Exceptions Settings field.
+     * @param {string}      [options.title]        - The title attribute for the field container, often used for tooltips.
+     * @param {Object}      [options.initialValue] - The initial settings values for exceptions.
+     * @param {boolean}     [options.initialValue.returnExceptions=false] - Indicates whether exceptions should be returned in the response.
+     * @param {Function}     setCallback - A callback function invoked whenever the Exceptions Settings field data changes.
      *
-     * @param {HTMLElement} container    - The parent element to which the exceptions settings field will be appended.
-     * @param {string}      label        - The identifier for the exceptions settings field, expected in PascalCase format.
-     * @param {string}      title        - The title attribute for the field container, typically used for tooltips.
-     * @param {Object}      initialValue - An object containing initial values for the exceptions settings.
-     * @param {Function}    setCallback  - A callback function invoked whenever the exceptions settings change.
-     * @returns {HTMLElement} - The parent container with the appended exceptions settings field.
+     * @returns {HTMLElement} The container element that includes the newly created Exceptions Settings field.
      */
-    static newExceptionsSettingsField(container, label, title, initialValue, setCallback) {
-        // Generate a unique identifier for the exceptions settings fields.
+    static newExceptionsSettingsField(options, setCallback) {
+        // Generate a unique identifier for the exceptions settings fields
         const inputId = newUid();
 
-        // Escape the unique identifier to ensure it's safe for use in CSS selectors.
+        // Escape the unique identifier to ensure it's safe for use in CSS selectors
         const escapedId = CSS.escape(inputId);
 
-        // Create a container with multiple exceptions settings fields using the provided ID, label, and title.
-        const fieldContainer = newMultipleFieldsContainer(inputId, label, title, 'container');
+        /**
+         * Create a container for the Exceptions Settings field using a helper function.
+         * - Accepts the generated ID, label, title, and a role of 'container' for proper structure.
+         */
+        const fieldContainer = newMultipleFieldsContainer(inputId, options.label, options.title, 'container');
 
-        // Select the controller sub-container within the field container using the escaped unique ID.
+        /**
+         * Select the controller sub-container within the field container using the escaped unique ID.
+         * Additional input fields or switches will be placed here.
+         */
         const controller = fieldContainer.querySelector(`#${escapedId}-container`);
 
-        // Create a new switch field for Return Exceptions.
+        /**
+         * Create a new switch field for 'ReturnExceptions'.
+         * - `initialValue` defaults to false if not specified in `options.initialValue`.
+         * - The callback updates the `exceptionsSettings` object with the boolean value of `returnExceptions`.
+         */
         CustomFields.newSwitchField(
             {
                 container: controller,
-                initialValue: initialValue?.returnExceptions || false,
+                initialValue: options.initialValue?.returnExceptions || false,
                 label: 'ReturnExceptions',
                 title: 'Indicates whether the exceptions should be returned in the response.'
             },
             (value) => {
+                // Convert the string value ('true'/'false') to a boolean and update exceptionsSettings
                 const exceptionsSettings = {
                     returnExceptions: convertStringToBool(value)
                 };
+                // Invoke the main callback with the updated settings
                 setCallback(exceptionsSettings);
             }
         );
 
-        // Append the fully constructed exceptions settings field container to the provided parent container in the DOM.
-        container.appendChild(fieldContainer);
+        // If a container element is provided, append the field container to it
+        if (options.container) {
+            options.container.appendChild(fieldContainer);
+        }
 
-        // Return the parent container with the appended exceptions settings field for further manipulation if needed.
-        return container;
+        // Return the container holding the new Exceptions Settings field
+        return options.container ? options.container : fieldContainer;
     }
 
     /**

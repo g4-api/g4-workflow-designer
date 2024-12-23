@@ -383,10 +383,12 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 
 	// Add an exceptions settings field for configuring the G4 exceptions settings.
 	CustomG4Fields.newExceptionsSettingsField(
-		container,
-		"G4™ Exceptions Settings",
-		"Provide G4™ exceptions settings to configure the automation.",
-		definition.properties['exceptionsSettings'],
+		{
+			container: container,
+			label: "G4™ Exceptions Settings",
+			title: "Provide G4™ exceptions settings to configure the automation.",
+			initialValue: definition.properties['exceptionsSettings']
+		},
 		(value) => {
 			// Ensure the "exceptionsSettings" property exists in the definition.
 			definition.properties['exceptionsSettings'] = definition.properties['exceptionsSettings'] || {};
