@@ -343,10 +343,12 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 
 	// Add an automation settings field for configuring the automation settings.
 	CustomG4Fields.newAutomationSettingsField(
-		container,
-		"G4™ Automation Settings",
-		"Provide G4™ automation settings to configure the automation.",
-		definition.properties['automationSettings'],
+		{
+			container: container,
+			label: "G4™ Automation Settings",
+			title: "Provide G4™ automation settings to configure the automation.",
+			initialValue: definition.properties['automationSettings']
+		},
 		(value) => {
 			// Ensure the "automationSettings" property exists in the definition.
 			definition.properties['automationSettings'] = definition.properties['automationSettings'] || {};

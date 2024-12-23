@@ -620,34 +620,24 @@ class CustomG4Fields {
     }
 
     /**
-     * Creates and appends a new automation settings field to the specified container.
+     * Creates and configures a new Automation Settings field containing multiple inputs,
+     * such as timeouts, parallel execution limits, and response format toggles.
      *
-     * This static method generates a structured set of input fields for configuring various
-     * automation settings such as load timeout, maximum parallel executions, and response formats.
-     * It utilizes the CustomFields utility to create input elements and sets up event listeners
-     * to handle changes, invoking the provided callback with the updated settings.
+     * @param {Object}       options                  - Configuration options for the Automation Settings field.
+     * @param {HTMLElement} [options.container]       - The DOM element to which this field will be appended.
+     * @param {string}       options.label            - A label identifier for this field container.
+     * @param {string}      [options.title]           - An optional title (tooltip) for the field container.
+     * @param {Object}      [options.initialValue={}] - An object containing initial settings values.
+     * @param {number}      [options.initialValue.loadTimeout=60000]              - The max time in ms to wait for page loads.
+     * @param {number}      [options.initialValue.maxParallel=1]                  - The number of parallel rows to execute.
+     * @param {boolean}     [options.initialValue.returnFlatResponse=false]       - If `true`, includes a flattened format in `responseData`.
+     * @param {boolean}     [options.initialValue.returnStructuredResponse=false] - If `true`, includes a structured format in `responseTree`.
+     * @param {number}      [options.initialValue.searchTimeout=15000]            - The max time in ms to wait for element searches.
+     * @param {Function}     setCallback - Callback function invoked whenever field data changes.
      *
-     * @param {HTMLElement} container    - The parent DOM element to which the automation settings fields will be appended.
-     * @param {string}      label        - The display label for the automation settings section.
-     * @param {string}      title        - The tooltip text providing additional information about the automation settings.
-     * @param {Object}      initialValue - An object containing the initial values for the automation settings.
-     * @param {Function} setCallback - A callback function that is invoked whenever the automation settings are updated. It receives an object with the updated settings.
-     *
-     * @example
-     * // Assuming 'container' is a valid DOM element and 'setCallback' is a defined function
-     * const initialSettings = {
-     *     loadTimeout: 60000,
-     *     maxParallel: 1,
-     *     returnFlatResponse: false,
-     *     returnStructuredResponse: false,
-     *     searchTimeout: 15000
-     * };
-     *
-     * newAutomationSettingsField(container, 'Automation Settings', 'Configure various automation parameters.', initialSettings, (updatedSettings) => {
-     *     console.log('Automation settings updated:', updatedSettings);
-     * });
+     * @returns {HTMLElement} The container element that includes the newly created Automation Settings field.
      */
-    static newAutomationSettingsField(container, label, title, initialValue, setCallback) {
+    static newAutomationSettingsField(options, setCallback) {
         // Generate a unique identifier for the automation settings fields.
         const inputId = newUid();
 
@@ -655,16 +645,18 @@ class CustomG4Fields {
         const id = CSS.escape(inputId);
 
         // Create a container with multiple fields using the provided ID, label, and title.
-        const fieldContainer = newMultipleFieldsContainer(inputId, label, title, 'container');
+        const fieldContainer = newMultipleFieldsContainer(inputId, options.label, options.title, 'container');
 
         // Select the controller sub-container within the field container using the unique ID.
         const controller = fieldContainer.querySelector(`#${id}-container`);
 
         // Create a new number input field for the "LoadTimeout".
+        // - Default value is 60000 ms if not provided in initialValue.
+        // - step is set to 1 to allow integer increments.
         CustomFields.newNumberField(
             {
                 container: controller,
-                initialValue: initialValue?.loadTimeout || 60000,
+                initialValue: options.initialValue?.loadTimeout || 60000,
                 isReadonly: false,
                 label: 'LoadTimeout',
                 step: 1,
@@ -679,10 +671,12 @@ class CustomG4Fields {
         );
 
         // Create a new number input field for the "MaxParallel".
+        // - Default value is 1 if not provided in initialValue.
+        // - Used to limit the number of parallel rows to execute.
         CustomFields.newNumberField(
             {
                 container: controller,
-                initialValue: initialValue?.maxParallel || 1,
+                initialValue: options.initialValue?.maxParallel || 1,
                 isReadonly: false,
                 label: "MaxParallel",
                 step: 1,
@@ -696,12 +690,12 @@ class CustomG4Fields {
             }
         );
 
-        // container, label, title, initialValue, setCallback
         // Create a new switch field for the "ReturnFlatResponse".
+        // - Indicates whether a flattened format should be included in `responseData`.
         CustomFields.newSwitchField(
             {
                 container: controller,
-                initialValue: initialValue?.returnFlatResponse || false,
+                initialValue: options.initialValue?.returnFlatResponse || false,
                 label: "ReturnFlatResponse",
                 title: "Indicates whether to includes a flattened format within the `responseData` field of the response."
             },
@@ -714,10 +708,11 @@ class CustomG4Fields {
         );
 
         // Create a new switch field for the "ReturnStructuredResponse".
+        // - Indicates whether a structured format should be included in `responseTree`.
         CustomFields.newSwitchField(
             {
                 container: controller,
-                initialValue: initialValue?.returnStructuredResponse || false,
+                initialValue: options.initialValue?.returnStructuredResponse || false,
                 label: "ReturnStructuredResponse",
                 title: "Indicates whether to includes a structured format within the `responseTree` field of the response."
             },
@@ -730,10 +725,12 @@ class CustomG4Fields {
         );
 
         // Create a new number input field for the "SearchTimeout".
+        // - Default value is 15000 ms if not provided in initialValue.
+        // - step is set to 1 to allow integer increments.
         CustomFields.newNumberField(
             {
                 container: controller,
-                initialValue: initialValue?.searchTimeout || 15000,
+                initialValue: options.initialValue?.searchTimeout || 15000,
                 isReadonly: false,
                 label: "SearchTimeout",
                 title: "The maximum time (in milliseconds) to wait for an element to be found during searches.",
@@ -748,10 +745,12 @@ class CustomG4Fields {
         );
 
         // Append the fully constructed field container to the provided parent container in the DOM.
-        container.appendChild(fieldContainer);
+        if (options.container) {
+            options.container.appendChild(fieldContainer);
+        }
 
         // Return the field container for further manipulation if needed.
-        return container;
+        return options.container ? options.container : fieldContainer;
     }
 
     /**
