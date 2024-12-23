@@ -884,40 +884,53 @@ class CustomG4Fields {
     }
 
     /**
-     * Creates and appends a new Queue Manager Settings field to the specified container.
+     * Creates and configures a new Queue Manager Settings field, allowing users to specify
+     * a queue manager type and additional properties through dynamic input fields.
      *
-     * This field includes sub-fields for Type and Properties, allowing users to configure
-     * queue manager-related settings for automation requests.
+     * @param {Object}       options                             - Configuration options for the Queue Manager Settings field.
+     * @param {HTMLElement} [options.container]                  - The DOM element to which the Queue Manager Settings field will be appended.
+     * @param {string}       options.label                       - The label identifier for the Queue Manager Settings field.
+     * @param {string}      [options.title]                      - The title attribute for the field container, often used for tooltips.
+     * @param {Object}      [options.initialValue]               - The initial settings values for the queue manager.
+     * @param {string}      [options.initialValue.type='']       - Specifies the type of the queue manager.
+     * @param {Object}      [options.initialValue.properties={}] - A key-value map of additional properties.
+     * @param {Function}     setCallback                         - A callback function invoked whenever the Queue Manager Settings field data changes.
      *
-     * @param {HTMLElement} container    - The parent element to which the queue manager settings field will be appended.
-     * @param {string}      label        - The identifier for the queue manager settings field, expected in PascalCase format.
-     * @param {string}      title        - The title attribute for the field container, typically used for tooltips.
-     * @param {Object}      initialValue - An object containing initial values for the queue manager settings.
-     * @param {Function}    setCallback  - A callback function invoked whenever any of the queue manager settings change.
-     * @returns {HTMLElement} - The parent container with the appended queue manager settings field.
+     * @returns {HTMLElement} The container element that includes the newly created Queue Manager Settings field.
      */
-    static newQueueManagerSettingsField(container, label, title, initialValue, setCallback) {
+    static newQueueManagerSettingsField(options, setCallback) {
         // Generate a unique identifier for the queue manager settings fields.
         const inputId = newUid();
 
         // Escape the unique identifier to ensure it's safe for use in CSS selectors.
         const escapedId = CSS.escape(inputId);
 
-        // Create a container with multiple queue manager settings fields using the provided ID, label, and title.
-        const fieldContainer = newMultipleFieldsContainer(inputId, label, title, 'container');
+        /**
+         * Create a container with multiple queue manager settings fields, using:
+         * - A helper function `newMultipleFieldsContainer` to build the main container.
+         * - The generated `inputId`, label, title, and role 'container'.
+         */
+        const fieldContainer = newMultipleFieldsContainer(inputId, options.label, options.title, 'container');
 
-        // Select the controller sub-container within the field container using the escaped unique ID.
+        /**
+         * Select the controller sub-container within the field container using
+         * the escaped unique ID. This is where the input fields will be placed.
+         */
         const controller = fieldContainer.querySelector(`#${escapedId}-container`);
 
-        // Create a new string input field for the "Type" with an empty initial value or the provided initial type.
+        /**
+         * Create a new string input field for the 'Type' property of the queue manager.
+         * - Uses `newStringField` to render a text input.
+         * - The initial value defaults to an empty string if not provided.
+         * - The callback function captures changes to the 'Type' and invokes `setCallback`.
+         */
         CustomFields.newStringField(
             {
                 container: controller,
-                initialValue: initialValue?.type || '',
+                initialValue: options.initialValue?.type || '',
                 isReadonly: false,
                 label: 'Type',
                 title: 'Specifies the type of the queue manager.'
-
             },
             (value) => {
                 const queueManagerSettings = {
@@ -927,12 +940,20 @@ class CustomG4Fields {
             }
         );
 
-        // Create a new key-value field for Properties.
+        /**
+         * Create a new key-value field for 'Properties'.
+         * - Uses `newKeyValueField` to render a section where multiple key-value pairs can be defined.
+         * - The initial values default to an empty object if not provided.
+         * - The callback function captures changes to 'Properties' and invokes `setCallback`.
+         */
         CustomFields.newKeyValueField(
-            controller,
-            "Properties",
-            "Additional properties for the queue manager.",
-            initialValue?.properties || {},
+            {
+                container: controller,
+                label: 'Properties',
+                title: 'Additional properties for the queue manager.',
+                initialValue: options.initialValue?.properties || {}
+            },
+            options.initialValue?.properties || {},
             (value) => {
                 const queueManagerSettings = {
                     properties: value
@@ -941,25 +962,28 @@ class CustomG4Fields {
             }
         );
 
-        // Append the fully constructed queue manager settings field container to the provided parent container in the DOM.
-        container.appendChild(fieldContainer);
+        // If a container element is provided, append the fully constructed field container to it.
+        if (options.container) {
+            options.container.appendChild(fieldContainer);
+        }
 
-        // Return the parent container with the appended queue manager settings field for further manipulation if needed.
-        return container;
+        // Return the container that now includes the new Queue Manager Settings field.
+        return options.container ? options.container : fieldContainer;
     }
 
     /**
-     * Creates and appends a new Performance Points Settings field to the specified container.
+     * Creates and configures a new Performance Points Settings field that allows users
+     * to toggle whether performance points should be returned in the response.
      *
-     * This field includes a sub-field for Return Performance Points, allowing users to configure
-     * whether performance points should be returned in the response for automation requests.
+     * @param {Object}       options               - Configuration options for the Performance Points Settings field.
+     * @param {HTMLElement} [options.container]    - The DOM element to which the Performance Points Settings field will be appended.
+     * @param {string}       options.label         - The label identifier for the Performance Points Settings field.
+     * @param {string}      [options.title]        - The title attribute for the field container, often used for tooltips.
+     * @param {Object}      [options.initialValue] - The initial settings values.
+     * @param {boolean}     [options.initialValue.returnPerformancePoints=false] - Indicates whether performance points should be returned in the response.
+     * @param {Function}    setCallback - A callback function invoked whenever the Performance Points Settings field data changes.
      *
-     * @param {HTMLElement} container    - The parent element to which the performance points settings field will be appended.
-     * @param {string}      label        - The identifier for the performance points settings field, expected in PascalCase format.
-     * @param {string}      title        - The title attribute for the field container, typically used for tooltips.
-     * @param {Object}      initialValue - An object containing initial values for the performance points settings.
-     * @param {Function}    setCallback  - A callback function invoked whenever the performance points settings change.
-     * @returns {HTMLElement} - The parent container with the appended performance points settings field.
+     * @returns {HTMLElement} The container element that includes the newly created Performance Points Settings field.
      */
     static newPerformancePointsSettingsField(options, setCallback) {
         // Generate a unique identifier for the performance points settings fields.
@@ -968,13 +992,25 @@ class CustomG4Fields {
         // Escape the unique identifier to ensure it's safe for use in CSS selectors.
         const escapedId = CSS.escape(inputId);
 
-        // Create a container with multiple performance points settings fields using the provided ID, label, and title.
+        /**
+         * Create a container with multiple performance points settings fields.
+         * - Uses a helper function `newMultipleFieldsContainer` to build the main container.
+         * - Passes the ID, label, title, and 'container' role for proper structure and identification.
+         */
         const fieldContainer = newMultipleFieldsContainer(inputId, options.label, options.title, 'container');
 
-        // Select the controller sub-container within the field container using the escaped unique ID.
+        /**
+         * Select the controller sub-container within the field container using the escaped unique ID.
+         * This is where additional input fields or switches will be placed.
+         */
         const controller = fieldContainer.querySelector(`#${escapedId}-container`);
 
-        // Create a new switch field for Return Performance Points.
+        /**
+         * Create a new switch field for ReturnPerformancePoints.
+         * - `initialValue` is derived from options.initialValue, defaulting to false if not specified.
+         * - `label` and `title` describe the field purpose.
+         * - The callback converts the string value ('true'/'false') to a boolean and invokes `setCallback`.
+         */
         CustomFields.newSwitchField(
             {
                 container: controller,
@@ -990,12 +1026,15 @@ class CustomG4Fields {
             }
         );
 
-        // Append the fully constructed performance points settings field container to the provided parent container in the DOM.
+        // If the user has provided a container in options, append the fully constructed field container to it.
         if (options.container) {
             options.container.appendChild(fieldContainer);
         }
 
-        // Return the parent container with the appended performance points settings field for further manipulation if needed.
+        /**
+         * Return the parent container with the appended Performance Points Settings field,
+         * allowing further manipulation or inspection outside this function if needed.
+         */
         return options.container ? options.container : fieldContainer;
     }
 

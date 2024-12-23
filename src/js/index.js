@@ -403,10 +403,12 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 
 	// Add a queue manager settings field for configuring the G4 queue manager settings.
 	CustomG4Fields.newQueueManagerSettingsField(
-		container,
-		"G4™ Queue Manager Settings",
-		"Provide G4™ queue manager settings to configure the automation.",
-		definition.properties['queueManagerSettings'],
+		{
+			container: container,
+			label: "G4™ Queue Manager Settings",
+			title: "Provide G4™ queue manager settings to configure the automation.",
+			initialValue: definition.properties['queueManagerSettings']
+		},
 		(value) => {
 			// Ensure the "queueManagerSettings" property exists in the definition.
 			definition.properties['queueManagerSettings'] = definition.properties['queueManagerSettings'] || {};
