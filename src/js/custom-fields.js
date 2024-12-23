@@ -1237,6 +1237,135 @@ class CustomG4Fields {
         // Return the parent container with the appended plugins settings field for further manipulation if needed.
         return options.container ? options.container : fieldContainer;
     }
+
+    /**
+     * Creates and configures a new Screenshots Settings field that allows users to:
+     * 1. Specify an output folder for saving screenshots.
+     * 2. Toggle whether screenshots should be converted to Base64.
+     * 3. Toggle whether screenshots should be captured only on exceptions.
+     * 4. Toggle whether screenshots should be included in the response.
+     *
+     * @param {Object}       options               - Configuration options for the Screenshots Settings field.
+     * @param {HTMLElement} [options.container]    - The DOM element to which the Screenshots Settings field will be appended.
+     * @param {string}       options.label         - The label identifier for this field container.
+     * @param {string}      [options.title]        - An optional title (tooltip) for the field container.
+     * @param {Object}      [options.initialValue] - An object containing initial settings values.
+     * @param {string}      [options.initialValue.outputFolder='.']        - The default folder path for saving screenshots.
+     * @param {boolean}     [options.initialValue.convertToBase64=false]   - Indicates whether screenshots should be converted to Base64 strings.
+     * @param {boolean}     [options.initialValue.onExceptionOnly=false]   - Indicates whether screenshots should be captured only for exceptions.
+     * @param {boolean}     [options.initialValue.returnScreenshots=false] - Indicates whether screenshots should be returned in the response.
+     * @param {Function}     setCallback - A callback function invoked whenever a setting in the Screenshots field changes.
+     *
+     * @returns {HTMLElement} The container element that includes the newly created Screenshots Settings field.
+     */
+    static newScreenshotsSettingsField(options, setCallback) {
+        // Generate a unique identifier for the screenshots settings fields
+        const inputId = newUid();
+
+        // Escape the unique identifier to ensure it's safe for use in CSS selectors
+        const escapedId = CSS.escape(inputId);
+
+        /**
+         * Create a container for the Screenshots Settings field using a helper function.
+         * - Accepts the generated ID, label, title, and a role of 'container' for proper structure.
+         */
+        const fieldContainer = newMultipleFieldsContainer(inputId, options.label, options.title, 'container');
+
+        /**
+         * Select the controller sub-container within the field container using the escaped unique ID.
+         * Additional input fields or switches will be placed here.
+         */
+        const controller = fieldContainer.querySelector(`#${escapedId}-container`);
+
+        /**
+         * Create a new string field for the "OutputFolder".
+         * - Defaults to '.' if not provided in initialValue.
+         * - Used to specify the folder path for saving screenshots.
+         */
+        CustomFields.newStringField(
+            {
+                container: controller,
+                initialValue: options.initialValue?.outputFolder || '.',
+                isReadonly: false,
+                label: 'OutputFolder',
+                title: 'Specifies the default folder path for saving screenshots.'
+            },
+            (value) => {
+                // Build an object containing the updated output folder value
+                const environmentSettings = {
+                    outputFolder: value
+                };
+                // Invoke the main callback function with updated settings
+                setCallback(environmentSettings);
+            }
+        );
+
+        /**
+         * Create a new switch field for "ConvertToBase64".
+         * - Indicates whether screenshots should be converted to Base64 strings.
+         * - If true, base64 data is included in the response.
+         */
+        CustomFields.newSwitchField(
+            {
+                container: controller,
+                initialValue: options.initialValue?.convertToBase64 || false,
+                label: 'ConvertToBase64',
+                title: 'Indicates whether screenshots should be converted to Base64 strings. The Base64 data will be included in the response.'
+            },
+            (value) => {
+                const screenshotsSettings = {
+                    convertToBase64: convertStringToBool(value)
+                };
+                setCallback(screenshotsSettings);
+            }
+        );
+
+        /**
+         * Create a new switch field for "ExceptionsOnly".
+         * - Indicates whether screenshots should be captured only on exceptions.
+         */
+        CustomFields.newSwitchField(
+            {
+                container: controller,
+                initialValue: options.initialValue?.onExceptionOnly || false,
+                label: 'ExceptionsOnly',
+                title: 'Indicates whether screenshots should be captured only on exceptions.'
+            },
+            (value) => {
+                const screenshotsSettings = {
+                    onExceptionOnly: convertStringToBool(value)
+                };
+                setCallback(screenshotsSettings);
+            }
+        );
+
+        /**
+         * Create a new switch field for "ReturnScreenshots".
+         * - Indicates whether screenshots should be included in the response.
+         */
+        CustomFields.newSwitchField(
+            {
+                container: controller,
+                initialValue: options.initialValue?.returnScreenshots || false,
+                label: 'ReturnScreenshots',
+                title: 'Indicates whether screenshots should be returned in the response.'
+            },
+            (value) => {
+                const screenshotsSettings = {
+                    returnScreenshots: convertStringToBool(value)
+                };
+                setCallback(screenshotsSettings);
+            }
+        );
+
+        // If the user has provided a container in options, append the field container to it
+        if (options.container) {
+            options.container.appendChild(fieldContainer);
+        }
+
+        // Return the container holding the new Screenshots Settings field
+        return options.container ? options.container : fieldContainer;
+    }
 }
 
 class CustomFields {

@@ -514,6 +514,28 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 		}
 	);
 
+	// Add a screenshots settings field for configuring the G4 screenshots settings.
+	CustomG4Fields.newScreenshotsSettingsField(
+		{
+			container: container,
+			label: "G4™ Screenshots Settings",
+			title: "Provide G4™ screenshots settings to configure the automation.",
+			initialValue: definition.properties['screenshotsSettings']
+		},
+		(value) => {
+			// Ensure the "screenshotsSettings" property exists in the definition.
+			definition.properties['screenshotsSettings'] = definition.properties['screenshotsSettings'] || {};
+
+			// Update the "screenshotsSettings" property with the new values from the input.
+			for (const key of Object.keys(value)) {
+				definition.properties['screenshotsSettings'][key] = value[key];
+			}
+
+			// Notify the editor of the updated properties.
+			editorContext.notifyPropertiesChanged();
+		}
+	);
+
 	// Return the fully constructed container with all added elements.
 	return container;
 }
