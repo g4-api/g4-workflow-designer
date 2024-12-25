@@ -400,10 +400,12 @@ const newObjectArrayFieldsContainer = (id, options, setCallback) => {
                 break;
             case 'KEYVALUE':
                 CustomFields.newKeyValueField(
-                    container,
-                    label,
-                    title,
-                    mode === 'NEW' ? null : options.property.value,
+                    {
+                        container: container,
+                        label: label,
+                        title: title,
+                        initialValue: mode === 'NEW' ? null : options.property.value
+                    },
                     (value) => propertyCallback(value, setCallback)
                 );
                 break;
@@ -416,11 +418,14 @@ const newObjectArrayFieldsContainer = (id, options, setCallback) => {
     // Escape the unique identifier to ensure it's safe for use in CSS selectors.
     const escapedId = CSS.escape(id);
 
+    // Set
+    const role = options.role || 'container';
+
     // Create a container with multiple fields using the provided ID, label, title, and role.
-    const fieldContainer = newMultipleFieldsContainer(id, options.labelDisplayName, options.title, options.role);
+    const fieldContainer = newMultipleFieldsContainer(id, options.labelDisplayName, options.title, role);
 
     // Select the controller sub-container within the field container using the escaped unique ID.
-    const controllerContainer = fieldContainer.querySelector(`#${escapedId}-container`);
+    const controllerContainer = fieldContainer.querySelector(`#${escapedId}-${role}`);
 
     // Select the summary element to position the add button appropriately.
     const summaryContainer = fieldContainer.querySelector('summary');
@@ -926,7 +931,20 @@ class CustomG4Fields {
     }
 
     static newDriverParametersField(options, setCallback) {
-        // Generate a unique identifier for the Data Source field.
+        const newDataObject = (firstMatchCapabilities) => {
+            const dataObject = {};
+
+            dataObject['capabilities'] = {
+                label: 'Capabilities',
+                title: 'A collection of capabilities with additional custom information for the invocation.',
+                type: 'KEYVALUE',
+                value: firstMatchCapabilities || {}
+            };
+
+            return dataObject;
+        };
+
+        // Generate a unique identifier for the plugins settings fields.
         const inputId = newUid();
 
         // Escape the unique identifier to ensure it's safe for use in CSS selectors.
@@ -947,14 +965,280 @@ class CustomG4Fields {
                 title: 'Foo Bar'
             },
             (value) => {
-                // Build an object containing the updated default environment value
-                const driverParams = {
+                const driverParameters = {
                     driver: value
                 };
-                // Invoke the main callback function with updated settings
-                setCallback(driverParams);
+                setCallback(driverParameters);
             }
         );
+
+        CustomFields.newStringField(
+            {
+                container: controller,
+                initialValue: options.initialValue?.driverBinaries || '.',
+                isReadonly: false,
+                label: 'DriverBinaries',
+                title: 'The driver binaries location on local machine or grid endpoint.'
+            },
+            (value) => {
+                const driverParameters = {
+                    driverBinaries: value
+                };
+                setCallback(driverParameters);
+            }
+        );
+
+
+
+
+        const alwaysMatchField = newMultipleFieldsContainer(`${inputId}-always-match`, 'Always Match Capabilities', 'Foo Bar', 'always-match-capabilities');
+        const alwaysMatchContainer = alwaysMatchField.querySelector('[data-g4-role="always-match-capabilities"]')
+
+        CustomFields.newKeyValueField(
+            {
+                container: alwaysMatchContainer,
+                label: 'Capabilities',
+                title: 'Foo Bar',
+                initialValue: options.initialValue?.capabilities?.alwaysMatch
+            },
+            (value) => {
+                const driverParameters = {
+                    capabilities: {
+                        alwaysMatch: value
+                    }
+                };
+                setCallback(driverParameters);
+            }
+        );
+
+        controller.appendChild(alwaysMatchField);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        const firstMatch = options.initialValue?.capabilities?.firstMatch || [{}];
+
+        const dataObjects = [];
+
+        const indexes = Object.keys(firstMatch);
+
+        for (const index of indexes) {
+            const schema = newDataObject(firstMatch[index]);
+            dataObjects.push(schema);
+        }
+
+        if (dataObjects.length === 0) {
+            dataObjects.push(newDataObject(undefined));
+        }
+
+        const arrayFieldOptions = {
+            addButtonLabel: 'Add Capabilities Group',
+            dataObjects: dataObjects,
+            groupName: 'FirstMatch',
+            itemLabel: 'Group',
+            labelDisplayName: "First Match Capabilities",
+            removeButtonLabel: 'Remove',
+            role: 'container',
+            title: "First Match"
+        };
+
+        const firstMatchContainer = newObjectArrayFieldsContainer(
+            `${inputId}-first-match`,
+            arrayFieldOptions,
+            (value) => {
+                const firstMatchCapabilities = {};
+                const keys = Object.keys(value);
+                for (const key of keys) {
+                    const capabilities = value[key]?.firstMatch?.capabilities;
+                    if (!capabilities) {
+                        continue;
+                    }
+                    firstMatchCapabilities[key] = capabilities;
+                }
+
+                const driverParameters = {
+                    capabilities: {
+                        firstMatch: firstMatchCapabilities
+                    }
+                };
+                setCallback(driverParameters);
+            });
+
+        controller.appendChild(firstMatchContainer);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        // // Generate a unique identifier for the Data Source field.
+        // const inputId = newUid();
+
+        // // Escape the unique identifier to ensure it's safe for use in CSS selectors.
+        // const id = CSS.escape(inputId);
+
+        // // Create a main container for the Data Source field using a helper function.
+        // const fieldContainer = newMultipleFieldsContainer(inputId, options.label, options.title, 'container');
+
+        // // Select the controller sub-container within the field container using the unique ID.
+        // const controller = fieldContainer.querySelector(`#${id}-container`);
+
+        // CustomFields.newDataListField(
+        //     {
+        //         container: controller,
+        //         initialValue: options.initialValue?.driver || 'ChromeDriver',
+        //         itemSource: 'Driver',
+        //         label: 'Web Driver',
+        //         title: 'Foo Bar'
+        //     },
+        //     (value) => {
+        //         const driverParameters = {
+        //             driver: value
+        //         };
+        //         setCallback(driverParameters);
+        //     }
+        // );
+
+        // CustomFields.newStringField(
+        //     {
+        //         container: controller,
+        //         initialValue: options.initialValue?.driverBinaries || '.',
+        //         isReadonly: false,
+        //         label: 'DriverBinaries',
+        //         title: 'The driver binaries location on local machine or grid endpoint.'
+        //     },
+        //     (value) => {
+        //         const driverParameters = {
+        //             driverBinaries: value
+        //         };
+        //         setCallback(driverParameters);
+        //     }
+        // );
+
+        // const alwaysMatchField = newMultipleFieldsContainer('123', 'Always Match', 'Foo Bar', 'always-match-capabilities');
+        // const alwaysMatchContainer = alwaysMatchField.querySelector('[data-g4-role="always-match-capabilities"]')
+
+        // CustomFields.newKeyValueField(
+        //     {
+        //         container: alwaysMatchContainer,
+        //         label: 'Capabilities',
+        //         title: 'Foo Bar',
+        //         initialValue: options.initialValue?.alwaysMatch
+        //     },
+        //     (value) => {
+        //         const driverParameters = {
+        //             alwaysMatch: value
+        //         };
+        //         setCallback(driverParameters);
+        //     }
+        // );
+
+        // const dataObjects = {};
+        // // Define the 'capabilities' field for additional custom information.
+        // dataObjects['capabilities'] = {
+        //     label: 'Capabilities',
+        //     title: 'A collection of capabilities with additional custom information for the invocation.',
+        //     type: 'KEYVALUE',
+        //     value: options.initialValue?.driverParameters?.firstMatch.capabilities || {}
+        // };
+
+        // // Configuration options for the object array fields container.
+        // const arrayFieldOptions = {
+        //     addButtonLabel: 'Add Capabilities',
+        //     dataObjects: [dataObjects],
+        //     groupName: 'FirstMatch',
+        //     itemLabel: 'Capabilities',
+        //     labelDisplayName: "FirstMatch",
+        //     removeButtonLabel: 'Remove',
+        //     role: 'first-match-capabilities',
+        //     title: options.title
+        // };
+
+        // const firstMatchField = newObjectArrayFieldsContainer('321', arrayFieldOptions, setCallback);
+        // //const firstMatchContainer = alwaysMatchField.querySelector('[data-g4-role="first-match-capabilities"]')
+
+        // controller.appendChild(alwaysMatchField);
+        // controller.appendChild(firstMatchField);
 
         // If an external container is provided, append the field container to it
         if (options.container) {

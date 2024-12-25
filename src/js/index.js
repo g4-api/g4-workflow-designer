@@ -376,9 +376,28 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 		(value) => {
 			// Ensure the "driverParameters" property exists in the definition.
 			definition.properties['driverParameters'] = definition.properties['driverParameters'] || {};
+			definition.properties['driverParameters']['capabilities'] = definition.properties['driverParameters']['capabilities'] || {};
+			definition.properties['driverParameters']['capabilities']['firstMatch'] = definition.properties['driverParameters']['capabilities']['firstMatch'] || {};
 
 			// Update the "driverParameters" property with the new values from the input.
 			for (const key of Object.keys(value)) {
+				const isFirstMatch = key.toLocaleUpperCase() === 'CAPABILITIES' && 'firstMatch' in value[key];
+				const isAlwaysMatch = key.toLocaleUpperCase() === 'CAPABILITIES' && 'alwaysMatch' in value[key];
+				const capabilities = definition.properties['driverParameters'].capabilities;
+
+				if (isFirstMatch) {
+					const firstMatch = value[key].firstMatch;
+					for (const group of Object.keys(firstMatch)) {
+						capabilities['firstMatch'][group] = firstMatch[group];
+					}
+
+					continue;
+				}
+
+				if (isAlwaysMatch) {
+					capabilities['alwaysMatch'] = value[key].alwaysMatch;
+					continue;
+				}
 				definition.properties['driverParameters'][key] = value[key];
 			}
 
