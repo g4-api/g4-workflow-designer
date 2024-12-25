@@ -93,6 +93,15 @@ async function initializeDesigner() {
 	const manifests = await g4Cliet.getManifests();
 	const manifestsGroups = await g4Cliet.getGroups();
 
+	// Store the manifests and groups in global variables for later use.
+	_manifests = manifests;
+
+	// Store the cache in a global variable for later use.
+	_cache = await g4Cliet.getCache();
+
+	// Store the cache keys in a global variable for later use.
+	_cacheKeys = Object.keys(_cache).map(key => key.toUpperCase());
+
 	// Get the HTML element where the designer will be rendered.
 	const designerHtmlElement = document.getElementById('designer');
 
@@ -162,15 +171,6 @@ async function initializeDesigner() {
 
 	// Attach an event listener to the "Run" button for executing workflows.
 	document.getElementById('run').addEventListener('click', onRunClicked);
-
-	// Store the manifests and groups in global variables for later use.
-	_manifests = manifests;
-
-	// Store the cache in a global variable for later use.
-	_cache = await g4Cliet.getCache();
-
-	// Store the cache keys in a global variable for later use.
-	_cacheKeys = Object.keys(_cache).map(key => key.toUpperCase());
 }
 
 /**
@@ -358,6 +358,28 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 			// Update the "dataSource" property with the new values from the input.
 			for (const key of Object.keys(value)) {
 				definition.properties['dataSource'][key] = value[key];
+			}
+
+			// Notify the editor of the updated properties.
+			editorContext.notifyPropertiesChanged();
+		}
+	);
+
+	// Add a driver parameters field for configuring the G4 driver parameters.
+	CustomG4Fields.newDriverParametersField(
+		{
+			container: container,
+			label: "Driver Parameters",
+			title: "Provide G4™ driver parameters to configure the automation.",
+			initialValue: definition.properties['driverParameters']
+		},
+		(value) => {
+			// Ensure the "driverParameters" property exists in the definition.
+			definition.properties['driverParameters'] = definition.properties['driverParameters'] || {};
+
+			// Update the "driverParameters" property with the new values from the input.
+			for (const key of Object.keys(value)) {
+				definition.properties['driverParameters'][key] = value[key];
 			}
 
 			// Notify the editor of the updated properties.

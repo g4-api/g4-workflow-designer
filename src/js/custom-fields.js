@@ -925,6 +925,46 @@ class CustomG4Fields {
         return options.container ? options.container : fieldContainer;
     }
 
+    static newDriverParametersField(options, setCallback) {
+        // Generate a unique identifier for the Data Source field.
+        const inputId = newUid();
+
+        // Escape the unique identifier to ensure it's safe for use in CSS selectors.
+        const id = CSS.escape(inputId);
+
+        // Create a main container for the Data Source field using a helper function.
+        const fieldContainer = newMultipleFieldsContainer(inputId, options.label, options.title, 'container');
+
+        // Select the controller sub-container within the field container using the unique ID.
+        const controller = fieldContainer.querySelector(`#${id}-container`);
+
+        CustomFields.newDataListField(
+            {
+                container: controller,
+                initialValue: options.initialValue?.driver || 'ChromeDriver',
+                itemSource: 'Driver',
+                label: 'Web Driver',
+                title: 'Foo Bar'
+            },
+            (value) => {
+                // Build an object containing the updated default environment value
+                const driverParams = {
+                    driver: value
+                };
+                // Invoke the main callback function with updated settings
+                setCallback(driverParams);
+            }
+        );
+
+        // If an external container is provided, append the field container to it
+        if (options.container) {
+            options.container.appendChild(fieldContainer);
+        }
+
+        // Return the parent container holding the Data Source field
+        return options.container ? options.container : fieldContainer;
+    }
+
     /**
      * Creates and configures a new Environment Settings field that allows users to:
      * 1. Specify a default environment for automation requests.
