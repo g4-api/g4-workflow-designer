@@ -385,6 +385,18 @@ const newObjectArrayFieldsContainer = (id, options, setCallback) => {
                     (value) => propertyCallback(value, setCallback)
                 );
                 break;
+            case 'TEXT':
+                CustomFields.newTextField(
+                    {
+                        container: container,
+                        initialValue: mode === 'NEW' ? null : options.property.value,
+                        isReadonly: false,
+                        label: label,
+                        title: title
+                    },
+                    (value) => propertyCallback(value, setCallback)
+                );
+                break;
             case 'NUMBER':
                 CustomFields.newNumberField(
                     {
@@ -931,18 +943,7 @@ class CustomG4Fields {
     }
 
     static newDriverParametersField(options, setCallback) {
-        const newDataObject = (firstMatchCapabilities) => {
-            const dataObject = {};
 
-            dataObject['capabilities'] = {
-                label: 'Capabilities',
-                title: 'A collection of capabilities with additional custom information for the invocation.',
-                type: 'KEYVALUE',
-                value: firstMatchCapabilities || {}
-            };
-
-            return dataObject;
-        };
 
         // Generate a unique identifier for the plugins settings fields.
         const inputId = newUid();
@@ -1014,71 +1015,159 @@ class CustomG4Fields {
         controller.appendChild(alwaysMatchField);
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        const firstMatch = options.initialValue?.capabilities?.firstMatch || [{}];
-
-        const dataObjects = [];
-
-        const indexes = Object.keys(firstMatch);
-
-        for (const index of indexes) {
-            const schema = newDataObject(firstMatch[index]);
-            dataObjects.push(schema);
-        }
-
-        if (dataObjects.length === 0) {
-            dataObjects.push(newDataObject(undefined));
-        }
-
-        const arrayFieldOptions = {
-            addButtonLabel: 'Add Capabilities Group',
-            dataObjects: dataObjects,
-            groupName: 'FirstMatch',
-            itemLabel: 'Group',
-            labelDisplayName: "First Match Capabilities",
-            removeButtonLabel: 'Remove',
-            role: 'container',
-            title: "First Match"
-        };
-
-        const firstMatchContainer = newObjectArrayFieldsContainer(
-            `${inputId}-first-match`,
-            arrayFieldOptions,
-            (value) => {
-                const firstMatchCapabilities = {};
-                const keys = Object.keys(value);
-                for (const key of keys) {
-                    const capabilities = value[key]?.firstMatch?.capabilities;
-                    if (!capabilities) {
-                        continue;
-                    }
-                    firstMatchCapabilities[key] = capabilities;
-                }
-
-                const driverParameters = {
-                    capabilities: {
-                        firstMatch: firstMatchCapabilities
-                    }
+        const addFirstMatch = () => {
+            const newDataObject = (firstMatchCapabilities) => {
+                const dataObject = {};
+    
+                dataObject['capabilities'] = {
+                    label: 'Capabilities',
+                    title: 'A collection of capabilities with additional custom information for the invocation.',
+                    type: 'KEYVALUE',
+                    value: firstMatchCapabilities || {}
                 };
-                setCallback(driverParameters);
-            });
+    
+                return dataObject;
+            };
 
-        controller.appendChild(firstMatchContainer);
+            const firstMatch = options.initialValue?.capabilities?.firstMatch || [{}];
+
+            const dataObjects = [];
+    
+            const indexes = Object.keys(firstMatch);
+    
+            for (const index of indexes) {
+                const schema = newDataObject(firstMatch[index]);
+                dataObjects.push(schema);
+            }
+    
+            if (dataObjects.length === 0) {
+                dataObjects.push(newDataObject(undefined));
+            }
+    
+            const arrayFieldOptions = {
+                addButtonLabel: 'Add Capabilities Group',
+                dataObjects: dataObjects,
+                groupName: 'FirstMatch',
+                itemLabel: 'Group',
+                labelDisplayName: "First Match Capabilities",
+                removeButtonLabel: 'Remove',
+                role: 'container',
+                title: "First Match"
+            };
+    
+            const firstMatchContainer = newObjectArrayFieldsContainer(
+                `${inputId}-first-match`,
+                arrayFieldOptions,
+                (value) => {
+                    const firstMatchCapabilities = {};
+                    const keys = Object.keys(value);
+                    for (const key of keys) {
+                        const capabilities = value[key]?.firstMatch?.capabilities;
+                        if (!capabilities) {
+                            continue;
+                        }
+                        firstMatchCapabilities[key] = capabilities;
+                    }
+    
+                    const driverParameters = {
+                        capabilities: {
+                            firstMatch: firstMatchCapabilities
+                        }
+                    };
+                    setCallback(driverParameters);
+                });
+    
+            controller.appendChild(firstMatchContainer);
+        }
+
+        addFirstMatch();
+
+        const addVendorCapabilities = () => {
+            const newDataObject = (vendor, vendorCapabilities) => {
+                const dataObject = {};
+                dataObject['vendor'] = {
+                    label: 'Vendor',
+                    title: 'The vendor name associated with the capabilities.',
+                    type: 'TEXT',
+                    value: vendor || ''
+                };
+
+                dataObject['capabilities'] = {
+                    label: 'Capabilities',
+                    title: 'A collection of capabilities with additional custom information for the invocation.',
+                    type: 'KEYVALUE',
+                    value: vendorCapabilities || {}
+                };
+    
+                return dataObject;
+            };
+
+            const vendorCapabilities = options.initialValue?.capabilities?.vendorCapabilities || [{}];
+
+            const dataObjects = [];
+    
+            const indexes = Object.keys(vendorCapabilities);
+    
+            for (const index of indexes) {
+                const schema = newDataObject('', vendorCapabilities[index]);
+                dataObjects.push(schema);
+            }
+    
+            if (dataObjects.length === 0) {
+                dataObjects.push(newDataObject(undefined, undefined));
+            }
+    
+            const arrayFieldOptions = {
+                addButtonLabel: 'Add Capabilities Group',
+                dataObjects: dataObjects,
+                groupName: 'VendorCapabilities',
+                itemLabel: 'Group',
+                labelDisplayName: "Vendor Capabilities",
+                removeButtonLabel: 'Remove',
+                role: 'container',
+                title: "Vendor Capabilities"
+            };
+    
+            const vendorContainer = newObjectArrayFieldsContainer(
+                `${inputId}-vendor-capabilities`,
+                arrayFieldOptions,
+                (value) => {
+                    const vendorCapabilities = {};
+                    const keys = Object.keys(value);
+                    for (const key of keys) {
+                        const capabilities = value[key]?.vendorCapabilities?.capabilities;
+                        if (!capabilities) {
+                            continue;
+                        }
+                        vendorCapabilities[key] = capabilities;
+                    }
+    
+                    const driverParameters = {
+                        capabilities: {
+                            vendorCapabilities: vendorCapabilities
+                        }
+                    };
+                    setCallback(driverParameters);
+                });
+    
+            controller.appendChild(vendorContainer);
+        }
+
+        addVendorCapabilities();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
