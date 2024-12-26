@@ -373,35 +373,89 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 			title: "Provide G4™ driver parameters to configure the automation.",
 			initialValue: definition.properties['driverParameters']
 		},
+		/**
+		 * Callback function to handle updates to the Driver Parameters field.
+		 *
+		 * This function processes the input `value` and updates the `definition.properties`
+		 * accordingly. It ensures that the `capabilities` structure is correctly maintained
+		 * and merges new values into existing configurations. After processing, it notifies
+		 * the editor that properties have changed.
+		 *
+		 * @param {Object} value - The updated Driver Parameters provided by the user.
+		 */
 		(value) => {
-			// Ensure the "driverParameters" property exists in the definition.
+			// Ensure the 'driverParameters' property exists in the definition.
 			definition.properties['driverParameters'] = definition.properties['driverParameters'] || {};
+
+			// Ensure the 'capabilities' object exists within 'driverParameters'.
 			definition.properties['driverParameters']['capabilities'] = definition.properties['driverParameters']['capabilities'] || {};
+
+			// Ensure the 'firstMatch' object exists within 'capabilities'.
 			definition.properties['driverParameters']['capabilities']['firstMatch'] = definition.properties['driverParameters']['capabilities']['firstMatch'] || {};
 
-			// Update the "driverParameters" property with the new values from the input.
+			// Ensure the 'vendorCapabilities' object exists within 'capabilities'.
+			definition.properties['driverParameters']['capabilities']['vendorCapabilities'] = definition.properties['driverParameters']['capabilities']['vendorCapabilities'] || {};
+
+			// Iterate over each key in the provided `value` object.
 			for (const key of Object.keys(value)) {
+				// Determine if the current key pertains to 'capabilities' with 'firstMatch'.
 				const isFirstMatch = key.toLocaleUpperCase() === 'CAPABILITIES' && 'firstMatch' in value[key];
+
+				// Determine if the current key pertains to 'capabilities' with 'alwaysMatch'.
 				const isAlwaysMatch = key.toLocaleUpperCase() === 'CAPABILITIES' && 'alwaysMatch' in value[key];
+
+				// Determine if the current key pertains to 'capabilities' with 'vendorCapabilities'.
+				const isVendors = key.toLocaleUpperCase() === 'CAPABILITIES' && 'vendorCapabilities' in value[key];
+
+				// Reference to the existing 'capabilities' object for easy access.
 				const capabilities = definition.properties['driverParameters'].capabilities;
 
 				if (isFirstMatch) {
+					// Extract the 'firstMatch' object from the input value.
 					const firstMatch = value[key].firstMatch;
+
+					// Iterate over each group in 'firstMatch' and merge it into the existing capabilities.
 					for (const group of Object.keys(firstMatch)) {
 						capabilities['firstMatch'][group] = firstMatch[group];
 					}
 
+					// Continue to the next key as this one has been processed.
+					continue;
+				}
+
+				if (isVendors) {
+					// Extract the 'vendorCapabilities' object from the input value.
+					const vendors = value[key].vendorCapabilities;
+
+					// Iterate over each vendor in 'vendorCapabilities'.
+					for (const vendor of Object.keys(vendors)) {
+						// Iterate over each property for the current vendor.
+						for (const property of Object.keys(vendors[vendor])) {
+							// Ensure the vendor object exists within 'vendorCapabilities'.
+							capabilities['vendorCapabilities'][vendor] = capabilities['vendorCapabilities'][vendor] || {};
+
+							// Assign the property value to the corresponding vendor and property.
+							capabilities['vendorCapabilities'][vendor][property] = vendors[vendor][property];
+						}
+					}
+
+					// Continue to the next key as this one has been processed.
 					continue;
 				}
 
 				if (isAlwaysMatch) {
+					// Assign the 'alwaysMatch' object directly to the capabilities.
 					capabilities['alwaysMatch'] = value[key].alwaysMatch;
+
+					// Continue to the next key as this one has been processed.
 					continue;
 				}
+
+				// For all other keys, assign the value directly to 'driverParameters'.
 				definition.properties['driverParameters'][key] = value[key];
 			}
 
-			// Notify the editor of the updated properties.
+			// Notify the editor that the properties have been updated.
 			editorContext.notifyPropertiesChanged();
 		}
 	);

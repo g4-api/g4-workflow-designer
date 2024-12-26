@@ -207,14 +207,19 @@ const newUnlabeledFieldContainer = (id, role) => {
  * and a content area containing an unlabeled field container. The resulting structure allows users
  * to expand or collapse the section to view or hide multiple input fields.
  *
- * @param {string} id               - A unique identifier used to assign IDs to the field container and its controller.
- * @param {string} labelDisplayName - The text to display in the summary section, serving as the label for the container.
- * @param {string} hintText         - The tooltip text that appears when hovering over the summary label.
- * @param {string} role             - The role of the container
+ * @param {string} id      - A unique identifier used to assign IDs to the field container and its controller.
+ * @param {Object} options - Configuration options for the container.
+ * @param {string} options.labelDisplayName - The text to display in the summary section, serving as the label for the container.
+ * @param {string} options.hintText         - The tooltip text that appears when hovering over the summary label.
+ * @param {string} options.role             - The role of the container.
  * @returns {HTMLDetailsElement} - The constructed `details` container element containing the summary and field container.
  *
  * @example
- * const container = newMultipleFieldsContainer('uniqueId123', 'User Details', 'Click to expand and view user details');
+ * const container = newMultipleFieldsContainer('uniqueId123', {
+ *     labelDisplayName: 'User Details',
+ *     hintText: 'Click to expand and view user details',
+ *     role: 'user-role'
+ * });
  * document.body.appendChild(container);
  * // This will append the following HTML structure to the body:
  * // <details>
@@ -226,21 +231,21 @@ const newUnlabeledFieldContainer = (id, role) => {
  * //   </div>
  * // </details>
  */
-const newMultipleFieldsContainer = (id, labelDisplayName, hintText, role) => {
+const newMultipleFieldsContainer = (id, options) => {
     // Create the main <details> container element.
     const detailsContainer = document.createElement('details');
 
     // Create the <summary> element that serves as the clickable label.
     const summaryContainer = document.createElement('summary');
 
-    // Create an unlabeled field container using the provided 'id'.
-    const fieldContainer = newUnlabeledFieldContainer(id, role);
+    // Create an unlabeled field container using the provided 'id' and 'role'.
+    const fieldContainer = newUnlabeledFieldContainer(id, options.role);
 
     // Set the display text of the summary label.
-    summaryContainer.textContent = labelDisplayName;
+    summaryContainer.textContent = options.labelDisplayName;
 
     // Set the tooltip text for the summary label.
-    summaryContainer.title = labelDisplayName;
+    summaryContainer.title = options.hintText;
 
     // Append the summary and content containers to the main <details> container.
     detailsContainer.appendChild(summaryContainer);
@@ -284,7 +289,10 @@ const newObjectArrayFieldsContainer = (id, options, setCallback) => {
         const indexKey = `${index}`;
 
         // Create a container for the array item with a unique identifier and label.
-        const arrayContainer = newMultipleFieldsContainer(`${id}-${index}`, `${options.itemLabel} ${index}`, "Foo Bar", "array-item-container");
+        const arrayContainer = newMultipleFieldsContainer(`${id}-${index}`, {
+            labelDisplayName: `${options.itemLabel} ${index}`,
+            role: "array-item-container"
+        });
 
         // Select the sub-container designated for array item properties.
         const itemContainer = arrayContainer.querySelector(`[data-g4-role="array-item-container"]`);
@@ -434,7 +442,10 @@ const newObjectArrayFieldsContainer = (id, options, setCallback) => {
     const role = options.role || 'container';
 
     // Create a container with multiple fields using the provided ID, label, title, and role.
-    const fieldContainer = newMultipleFieldsContainer(id, options.labelDisplayName, options.title, role);
+    const fieldContainer = newMultipleFieldsContainer(id, {
+        labelDisplayName: options.labelDisplayName,
+        role: role
+    });
 
     // Select the controller sub-container within the field container using the escaped unique ID.
     const controllerContainer = fieldContainer.querySelector(`#${escapedId}-${role}`);
@@ -487,68 +498,6 @@ const newObjectArrayFieldsContainer = (id, options, setCallback) => {
 }
 
 /**
- * Generates a `<style>` block containing CSS styles scoped to a specific element by ID.
- *
- * @param {string} id - The unique identifier of the parent element to scope the styles.
- * @returns {string} A string containing a `<style>` tag with the defined CSS rules.
- *
- * @example
- * // To apply styles to an element with ID 'myComponent'
- * const styleElement = newLabelStyle('myComponent');
- * document.head.insertAdjacentHTML('beforeend', styleElement);
- */
-newLabelStyle = (id) => {
-    return `
-        <style>
-            /* Box-sizing Reset */
-            *,
-            *::before,
-            *::after {
-                box-sizing: border-box;
-            }
-    
-            /* Flexbox Container for Label */
-            #${id} label {
-                display: flex;
-                align-items: center;
-                font-size: 16px;
-            }
-    
-            /* SVG Icon Styling */
-            #${id} .hint-icon-container {
-                position: relative;
-                margin-left: 5px;
-                cursor: pointer;
-                align-items: center;
-                line-height: 1.3em;
-                display: block;
-                width: 18px;
-                height: 18px;
-                margin: 0 8px;
-                border-radius: 50% 50%;
-                text-align: center;
-                font-size: 11px;
-                cursor: pointer;
-            }
-    
-            #${id} .hint-icon {
-                line-height: 1.3em;
-                text-align: center;
-                font-size: 11px;
-                cursor: pointer;
-                width: 64%;
-                height: 64%;
-                margin: 18%;
-            }
-    
-            /* Change icon color on hover/focus */
-            #${id} .hint-icon-container:hover .hint-icon,
-            #${id} .hint-icon-container:focus .hint-icon {
-            }
-        </style>`
-};
-
-/**
  * Generates a unique identifier (UID) as a hexadecimal string.
  *
  * @returns {string} A unique identifier generated by combining a random number and converting it to a hexadecimal string.
@@ -584,7 +533,10 @@ class CustomG4Fields {
         const id = CSS.escape(inputId);
 
         // Create a container with multiple fields (e.g., username and password) using the provided ID, label, and title.
-        const fieldContainer = newMultipleFieldsContainer(inputId, options.label, options.title, 'container');
+        const fieldContainer = newMultipleFieldsContainer(inputId, {
+            labelDisplayName: options.label,
+            role: 'container'
+        });
 
         // Select the controller sub-container within the field container using the unique ID.
         const controller = fieldContainer.querySelector(`#${id}-container`);
@@ -665,7 +617,10 @@ class CustomG4Fields {
         const id = CSS.escape(inputId);
 
         // Create a container with multiple fields using the provided ID, label, and title.
-        const fieldContainer = newMultipleFieldsContainer(inputId, options.label, options.title, 'container');
+        const fieldContainer = newMultipleFieldsContainer(inputId, {
+            labelDisplayName: options.label,
+            role: 'container'
+        });
 
         // Select the controller sub-container within the field container using the unique ID.
         const controller = fieldContainer.querySelector(`#${id}-container`);
@@ -802,7 +757,10 @@ class CustomG4Fields {
         const id = CSS.escape(inputId);
 
         // Create a main container for the Data Source field using a helper function.
-        const fieldContainer = newMultipleFieldsContainer(inputId, options.label, options.title, 'container');
+        const fieldContainer = newMultipleFieldsContainer(inputId, {
+            labelDisplayName: options.label,
+            role: 'container'
+        });
 
         // Select the controller sub-container within the field container using the unique ID.
         const controller = fieldContainer.querySelector(`#${id}-container`);
@@ -943,7 +901,117 @@ class CustomG4Fields {
     }
 
     static newDriverParametersField(options, setCallback) {
+        /**
+         * Adds a "First Match" capabilities group to the specified container.
+         *
+         * This function creates and appends a UI component for managing "First Match" capabilities
+         * within the provided container. It constructs data objects based on existing `firstMatch`
+         * configurations and initializes an object array fields container to allow users to add,
+         * remove, and modify capability groups.
+         *
+         * @param {string} id             - A unique identifier used to assign IDs to the field container and its controller.
+         * @param {HTMLElement} container - The DOM element that will contain the "First Match" capabilities.
+         * @param {Object} firstMatch     - An object representing existing "First Match" capabilities groups.
+         *
+         * @example
+         * const container = document.getElementById('capabilities-container');
+         * const firstMatch = {
+         *     group1: { /* capabilities data *\/ },
+         *     group2: { /* capabilities data *\/ }
+         * };
+         * addFirstMatch('uniqueId123', container, firstMatch);
+         */
+        const addFirstMatch = (id, container, firstMatch) => {
+            /**
+             * Generates a data object for a "Capabilities" group.
+             *
+             * @param {Object} firstMatchCapabilities - The capabilities data for the group.
+             * @returns {Object} - A data object representing the "Capabilities" group.
+             */
+            const newDataObject = (firstMatchCapabilities) => {
+                // Create a new data object with the "Capabilities" group properties.
+                const dataObject = {};
 
+                // Define the "capabilities" field with its properties.
+                dataObject['capabilities'] = {
+                    label: 'Capabilities',
+                    title: 'A collection of capabilities with additional custom information for the invocation.',
+                    type: 'KEYVALUE',
+                    value: firstMatchCapabilities || {}
+                };
+
+                // Return the fully constructed data object for the "Capabilities" group.
+                return dataObject;
+            };
+
+            // Initialize an array to hold all data objects for existing "First Match" groups.
+            const dataObjects = [];
+
+            // Retrieve all existing group keys from the `firstMatch` object.
+            const indexes = Object.keys(firstMatch);
+
+            // Iterate over each group key to create corresponding data objects.
+            for (const index of indexes) {
+                const schema = newDataObject(firstMatch[index]);
+                dataObjects.push(schema);
+            }
+
+            // If there are no existing groups, initialize with a default empty "Capabilities" group.
+            if (dataObjects.length === 0) {
+                dataObjects.push(newDataObject(undefined));
+            }
+
+            // Configuration options for the object array fields container.
+            const arrayFieldOptions = {
+                addButtonLabel: 'Add Capabilities Group',
+                dataObjects: dataObjects,
+                groupName: 'FirstMatch',
+                itemLabel: 'Group',
+                labelDisplayName: "First Match Capabilities",
+                removeButtonLabel: 'Remove',
+                role: 'container',
+                title: "First Match"
+            };
+
+            /* Callback function to handle updates to the "First Match" capabilities.
+             * This function processes the updated values from the UI, restructures them into the
+             * appropriate format, and invokes the provided `setCallback` to apply the changes.*/
+            const objectArrayCallback = (value) => {
+                // Initialize an object to hold the updated "First Match" capabilities.
+                const firstMatchCapabilities = {};
+
+                // Retrieve all keys from the updated value object.
+                const keys = Object.keys(value);
+
+                // Iterate over each key to extract and structure the capabilities data.
+                for (const key of keys) {
+                    const capabilities = value[key]?.firstMatch?.capabilities;
+
+                    // Skip any entries without capabilities data.
+                    if (!capabilities) {
+                        continue;
+                    }
+
+                    firstMatchCapabilities[key] = capabilities;
+                }
+
+                // Construct the driver parameters object with the updated "First Match" capabilities.
+                const driverParameters = {
+                    capabilities: {
+                        firstMatch: firstMatchCapabilities
+                    }
+                };
+
+                // Invoke the callback to apply the updated driver parameters.
+                setCallback(driverParameters);
+            };
+
+            // Create an object array fields container for managing "First Match" capabilities.
+            const firstMatchContainer = newObjectArrayFieldsContainer(`${id}-first-match`, arrayFieldOptions, objectArrayCallback);
+
+            // Append the "First Match" capabilities container to the specified parent container.
+            container.appendChild(firstMatchContainer);
+        }
 
         // Generate a unique identifier for the plugins settings fields.
         const inputId = newUid();
@@ -952,7 +1020,10 @@ class CustomG4Fields {
         const id = CSS.escape(inputId);
 
         // Create a main container for the Data Source field using a helper function.
-        const fieldContainer = newMultipleFieldsContainer(inputId, options.label, options.title, 'container');
+        const fieldContainer = newMultipleFieldsContainer(inputId, {
+            labelDisplayName: options.label,
+            role: 'container'
+        });
 
         // Select the controller sub-container within the field container using the unique ID.
         const controller = fieldContainer.querySelector(`#${id}-container`);
@@ -963,7 +1034,7 @@ class CustomG4Fields {
                 initialValue: options.initialValue?.driver || 'ChromeDriver',
                 itemSource: 'Driver',
                 label: 'Web Driver',
-                title: 'Foo Bar'
+                title: 'TODO'
             },
             (value) => {
                 const driverParameters = {
@@ -989,15 +1060,14 @@ class CustomG4Fields {
             }
         );
 
-
-
-
-        const alwaysMatchField = newMultipleFieldsContainer(`${inputId}-always-match`, 'Always Match Capabilities', 'Foo Bar', 'always-match-capabilities');
-        const alwaysMatchContainer = alwaysMatchField.querySelector('[data-g4-role="always-match-capabilities"]')
+        const alwaysMatchField = newMultipleFieldsContainer(`${inputId}-always-match`, {
+            labelDisplayName: 'Always Match Capabilities',
+            role: 'always-match-capabilities'
+        });
 
         CustomFields.newKeyValueField(
             {
-                container: alwaysMatchContainer,
+                container: alwaysMatchField.querySelector('[data-g4-role="always-match-capabilities"]'),
                 label: 'Capabilities',
                 title: 'Foo Bar',
                 initialValue: options.initialValue?.capabilities?.alwaysMatch
@@ -1015,108 +1085,50 @@ class CustomG4Fields {
         controller.appendChild(alwaysMatchField);
 
 
-        const addFirstMatch = () => {
-            const newDataObject = (firstMatchCapabilities) => {
-                const dataObject = {};
-    
-                dataObject['capabilities'] = {
-                    label: 'Capabilities',
-                    title: 'A collection of capabilities with additional custom information for the invocation.',
-                    type: 'KEYVALUE',
-                    value: firstMatchCapabilities || {}
-                };
-    
-                return dataObject;
-            };
 
-            const firstMatch = options.initialValue?.capabilities?.firstMatch || [{}];
 
-            const dataObjects = [];
-    
-            const indexes = Object.keys(firstMatch);
-    
-            for (const index of indexes) {
-                const schema = newDataObject(firstMatch[index]);
-                dataObjects.push(schema);
-            }
-    
-            if (dataObjects.length === 0) {
-                dataObjects.push(newDataObject(undefined));
-            }
-    
-            const arrayFieldOptions = {
-                addButtonLabel: 'Add Capabilities Group',
-                dataObjects: dataObjects,
-                groupName: 'FirstMatch',
-                itemLabel: 'Group',
-                labelDisplayName: "First Match Capabilities",
-                removeButtonLabel: 'Remove',
-                role: 'container',
-                title: "First Match"
-            };
-    
-            const firstMatchContainer = newObjectArrayFieldsContainer(
-                `${inputId}-first-match`,
-                arrayFieldOptions,
-                (value) => {
-                    const firstMatchCapabilities = {};
-                    const keys = Object.keys(value);
-                    for (const key of keys) {
-                        const capabilities = value[key]?.firstMatch?.capabilities;
-                        if (!capabilities) {
-                            continue;
-                        }
-                        firstMatchCapabilities[key] = capabilities;
-                    }
-    
-                    const driverParameters = {
-                        capabilities: {
-                            firstMatch: firstMatchCapabilities
-                        }
-                    };
-                    setCallback(driverParameters);
-                });
-    
-            controller.appendChild(firstMatchContainer);
-        }
+        addFirstMatch(inputId, controller, options.initialValue?.capabilities?.firstMatch || [{}]);
 
-        addFirstMatch();
+
+
+
+
 
         const addVendorCapabilities = () => {
-            const newDataObject = (vendor, vendorCapabilities) => {
+            const newDataObject = (vendorCapabilities) => {
                 const dataObject = {};
                 dataObject['vendor'] = {
                     label: 'Vendor',
                     title: 'The vendor name associated with the capabilities.',
                     type: 'TEXT',
-                    value: vendor || ''
+                    value: vendorCapabilities?.vendor || ''
                 };
 
                 dataObject['capabilities'] = {
                     label: 'Capabilities',
                     title: 'A collection of capabilities with additional custom information for the invocation.',
                     type: 'KEYVALUE',
-                    value: vendorCapabilities || {}
+                    value: vendorCapabilities?.capabilities || {}
                 };
-    
+
                 return dataObject;
             };
 
             const vendorCapabilities = options.initialValue?.capabilities?.vendorCapabilities || [{}];
 
             const dataObjects = [];
-    
+
             const indexes = Object.keys(vendorCapabilities);
-    
+
             for (const index of indexes) {
-                const schema = newDataObject('', vendorCapabilities[index]);
+                const schema = newDataObject(vendorCapabilities[index]);
                 dataObjects.push(schema);
             }
-    
+
             if (dataObjects.length === 0) {
                 dataObjects.push(newDataObject(undefined, undefined));
             }
-    
+
             const arrayFieldOptions = {
                 addButtonLabel: 'Add Capabilities Group',
                 dataObjects: dataObjects,
@@ -1127,7 +1139,7 @@ class CustomG4Fields {
                 role: 'container',
                 title: "Vendor Capabilities"
             };
-    
+
             const vendorContainer = newObjectArrayFieldsContainer(
                 `${inputId}-vendor-capabilities`,
                 arrayFieldOptions,
@@ -1136,12 +1148,22 @@ class CustomG4Fields {
                     const keys = Object.keys(value);
                     for (const key of keys) {
                         const capabilities = value[key]?.vendorCapabilities?.capabilities;
-                        if (!capabilities) {
+                        const vendor = value[key]?.vendorCapabilities?.vendor;
+                        if (!capabilities && !vendor) {
                             continue;
                         }
-                        vendorCapabilities[key] = capabilities;
+                        else if (!vendor) {
+                            vendorCapabilities[key] = {
+                                capabilities: capabilities || {}
+                            };
+                        }
+                        else if (!capabilities) {
+                            vendorCapabilities[key] = {
+                                vendor: vendor || ''
+                            };
+                        }
                     }
-    
+
                     const driverParameters = {
                         capabilities: {
                             vendorCapabilities: vendorCapabilities
@@ -1149,185 +1171,11 @@ class CustomG4Fields {
                     };
                     setCallback(driverParameters);
                 });
-    
+
             controller.appendChild(vendorContainer);
         }
 
         addVendorCapabilities();
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        // // Generate a unique identifier for the Data Source field.
-        // const inputId = newUid();
-
-        // // Escape the unique identifier to ensure it's safe for use in CSS selectors.
-        // const id = CSS.escape(inputId);
-
-        // // Create a main container for the Data Source field using a helper function.
-        // const fieldContainer = newMultipleFieldsContainer(inputId, options.label, options.title, 'container');
-
-        // // Select the controller sub-container within the field container using the unique ID.
-        // const controller = fieldContainer.querySelector(`#${id}-container`);
-
-        // CustomFields.newDataListField(
-        //     {
-        //         container: controller,
-        //         initialValue: options.initialValue?.driver || 'ChromeDriver',
-        //         itemSource: 'Driver',
-        //         label: 'Web Driver',
-        //         title: 'Foo Bar'
-        //     },
-        //     (value) => {
-        //         const driverParameters = {
-        //             driver: value
-        //         };
-        //         setCallback(driverParameters);
-        //     }
-        // );
-
-        // CustomFields.newStringField(
-        //     {
-        //         container: controller,
-        //         initialValue: options.initialValue?.driverBinaries || '.',
-        //         isReadonly: false,
-        //         label: 'DriverBinaries',
-        //         title: 'The driver binaries location on local machine or grid endpoint.'
-        //     },
-        //     (value) => {
-        //         const driverParameters = {
-        //             driverBinaries: value
-        //         };
-        //         setCallback(driverParameters);
-        //     }
-        // );
-
-        // const alwaysMatchField = newMultipleFieldsContainer('123', 'Always Match', 'Foo Bar', 'always-match-capabilities');
-        // const alwaysMatchContainer = alwaysMatchField.querySelector('[data-g4-role="always-match-capabilities"]')
-
-        // CustomFields.newKeyValueField(
-        //     {
-        //         container: alwaysMatchContainer,
-        //         label: 'Capabilities',
-        //         title: 'Foo Bar',
-        //         initialValue: options.initialValue?.alwaysMatch
-        //     },
-        //     (value) => {
-        //         const driverParameters = {
-        //             alwaysMatch: value
-        //         };
-        //         setCallback(driverParameters);
-        //     }
-        // );
-
-        // const dataObjects = {};
-        // // Define the 'capabilities' field for additional custom information.
-        // dataObjects['capabilities'] = {
-        //     label: 'Capabilities',
-        //     title: 'A collection of capabilities with additional custom information for the invocation.',
-        //     type: 'KEYVALUE',
-        //     value: options.initialValue?.driverParameters?.firstMatch.capabilities || {}
-        // };
-
-        // // Configuration options for the object array fields container.
-        // const arrayFieldOptions = {
-        //     addButtonLabel: 'Add Capabilities',
-        //     dataObjects: [dataObjects],
-        //     groupName: 'FirstMatch',
-        //     itemLabel: 'Capabilities',
-        //     labelDisplayName: "FirstMatch",
-        //     removeButtonLabel: 'Remove',
-        //     role: 'first-match-capabilities',
-        //     title: options.title
-        // };
-
-        // const firstMatchField = newObjectArrayFieldsContainer('321', arrayFieldOptions, setCallback);
-        // //const firstMatchContainer = alwaysMatchField.querySelector('[data-g4-role="first-match-capabilities"]')
-
-        // controller.appendChild(alwaysMatchField);
-        // controller.appendChild(firstMatchField);
 
         // If an external container is provided, append the field container to it
         if (options.container) {
@@ -1364,7 +1212,10 @@ class CustomG4Fields {
         const escapedId = CSS.escape(inputId);
 
         // Create a container with multiple environment settings fields using the provided ID, label, and title.
-        const fieldContainer = newMultipleFieldsContainer(inputId, options.label, options.title, 'container');
+        const fieldContainer = newMultipleFieldsContainer(inputId, {
+            labelDisplayName: options.label,
+            role: 'container'
+        });
 
         // Select the controller sub-container within the field container using the escaped unique ID.
         const controller = fieldContainer.querySelector(`#${escapedId}-container`);
@@ -1458,7 +1309,10 @@ class CustomG4Fields {
          * Create a container for the Exceptions Settings field using a helper function.
          * - Accepts the generated ID, label, title, and a role of 'container' for proper structure.
          */
-        const fieldContainer = newMultipleFieldsContainer(inputId, options.label, options.title, 'container');
+        const fieldContainer = newMultipleFieldsContainer(inputId, {
+            labelDisplayName: options.label,
+            role: 'container'
+        });
 
         /**
          * Select the controller sub-container within the field container using the escaped unique ID.
@@ -1524,7 +1378,10 @@ class CustomG4Fields {
          * - A helper function `newMultipleFieldsContainer` to build the main container.
          * - The generated `inputId`, label, title, and role 'container'.
          */
-        const fieldContainer = newMultipleFieldsContainer(inputId, options.label, options.title, 'container');
+        const fieldContainer = newMultipleFieldsContainer(inputId, {
+            labelDisplayName: options.label,
+            role: 'container'
+        });
 
         /**
          * Select the controller sub-container within the field container using
@@ -1611,7 +1468,10 @@ class CustomG4Fields {
          * - Uses a helper function `newMultipleFieldsContainer` to build the main container.
          * - Passes the ID, label, title, and 'container' role for proper structure and identification.
          */
-        const fieldContainer = newMultipleFieldsContainer(inputId, options.label, options.title, 'container');
+        const fieldContainer = newMultipleFieldsContainer(inputId, {
+            labelDisplayName: options.label,
+            role: 'container'
+        });
 
         /**
          * Select the controller sub-container within the field container using the escaped unique ID.
@@ -1851,7 +1711,10 @@ class CustomG4Fields {
          * Create a container for the Screenshots Settings field using a helper function.
          * - Accepts the generated ID, label, title, and a role of 'container' for proper structure.
          */
-        const fieldContainer = newMultipleFieldsContainer(inputId, options.label, options.title, 'container');
+        const fieldContainer = newMultipleFieldsContainer(inputId, {
+            labelDisplayName: options.label,
+            role: 'container'
+        });
 
         /**
          * Select the controller sub-container within the field container using the escaped unique ID.
