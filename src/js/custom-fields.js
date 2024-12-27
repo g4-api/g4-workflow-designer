@@ -900,6 +900,18 @@ class CustomG4Fields {
         return options.container ? options.container : fieldContainer;
     }
 
+    /**
+     * Creates and configures a new Driver Parameters field with various capability groups.
+     *
+     * This static method generates a comprehensive UI component for managing driver parameters,
+     * including "Always Match", "First Match", and "Vendor Capabilities" groups. It leverages
+     * helper functions to create and append fields, handling user interactions and updating
+     * the driver parameters accordingly.
+     *
+     * @param {Object}   options     - Configuration options for the Driver Parameters field.
+     * @param {Function} setCallback - A callback function to handle updates to the driver parameters.
+     * @returns {HTMLElement} The container element holding the Driver Parameters field.
+     */
     static newDriverParametersField(options, setCallback) {
         /**
          * Adds a "First Match" capabilities group to the specified container.
@@ -921,7 +933,7 @@ class CustomG4Fields {
          * };
          * addFirstMatch('uniqueId123', container, firstMatch);
          */
-        const addFirstMatch = (id, container, firstMatch) => {
+        const newFirstMatchCapabilities = (id, firstMatch) => {
             /**
              * Generates a data object for a "Capabilities" group.
              *
@@ -1009,9 +1021,139 @@ class CustomG4Fields {
             // Create an object array fields container for managing "First Match" capabilities.
             const firstMatchContainer = newObjectArrayFieldsContainer(`${id}-first-match`, arrayFieldOptions, objectArrayCallback);
 
-            // Append the "First Match" capabilities container to the specified parent container.
-            container.appendChild(firstMatchContainer);
+            // Return the fully constructed "First Match" capabilities container.
+            return firstMatchContainer;
         }
+
+        /**
+         * Adds a Vendor Capabilities UI component to the specified container.
+         *
+         * This function dynamically generates a user interface for managing vendor capabilities.
+         * It allows users to add, remove, and configure groups of vendor capabilities.
+         *
+         * @param {string} id                 - A unique identifier used to distinguish the component instance.
+         * @param {HTMLElement} container     - The DOM element where the vendor capabilities UI will be appended.
+         * @param {Object} vendorCapabilities - An object containing existing vendor capability data.
+         */
+        const newVendorCapabilities = (id, vendorCapabilities) => {
+            /**
+             * Creates a standardized data object for a single vendor capability entry.
+             *
+             * @param {Object} [vendorCapabilities] - The vendor capabilities data for a single vendor.
+             * @returns {Object} The structured data object containing vendor and capabilities information.
+             */
+            const newDataObject = (vendorCapabilities) => {
+                const dataObject = {};
+
+                // Define the vendor field with its metadata and value
+                dataObject['vendor'] = {
+                    label: 'Vendor',
+                    title: 'The vendor name associated with the capabilities.',
+                    type: 'TEXT',
+                    value: vendorCapabilities?.vendor || '' // Use optional chaining to safely access vendor
+                };
+
+                // Define the capabilities field with its metadata and value
+                dataObject['capabilities'] = {
+                    label: 'Capabilities',
+                    title: 'A collection of capabilities with additional custom information for the invocation.',
+                    type: 'KEYVALUE',
+                    value: vendorCapabilities?.capabilities || {} // Use optional chaining to safely access capabilities
+                };
+
+                return dataObject;
+            };
+
+            // Initialize an array to hold all data objects for vendor capabilities
+            const dataObjects = [];
+
+            // Retrieve all keys from the vendorCapabilities object
+            const indexes = Object.keys(vendorCapabilities);
+
+            // Iterate over each key to create a corresponding data object
+            for (const index of indexes) {
+                const schema = newDataObject(vendorCapabilities[index]);
+                dataObjects.push(schema);
+            }
+
+            // If there are no existing vendor capabilities, add a default empty data object
+            if (dataObjects.length === 0) {
+                dataObjects.push(newDataObject(undefined));
+            }
+
+            // Configuration options for the array fields UI component
+            const arrayFieldOptions = {
+                addButtonLabel: 'Add Capabilities Group',
+                dataObjects: dataObjects,
+                groupName: 'VendorCapabilities',
+                itemLabel: 'Group',
+                labelDisplayName: "Vendor Capabilities",
+                removeButtonLabel: 'Remove',
+                role: 'container',
+                title: "Vendor Capabilities"
+            };
+
+            /**
+             * Creates the vendor capabilities container using a utility function.
+             *
+             * @param {string} `${id}-vendor-capabilities` - The unique identifier for the container.
+             * @param {Object} arrayFieldOptions - Configuration options for the array fields.
+             * @param {Function} callback - A function to handle updates to the vendor capabilities data.
+             * @returns {HTMLElement} The constructed vendor capabilities container element.
+             */
+            const vendorContainer = newObjectArrayFieldsContainer(
+                `${id}-vendor-capabilities`, // Unique ID for the container
+                arrayFieldOptions, // Configuration options for the array fields
+                (value) => { // Callback function to handle changes in the vendor capabilities data
+                    const updatedVendorCapabilities = {}; // Initialize an object to store updated capabilities
+
+                    // Iterate over each key in the value object
+                    const keys = Object.keys(value);
+                    for (const key of keys) {
+                        // Safely access capabilities and vendor using optional chaining
+                        const capabilities = value[key]?.vendorCapabilities?.capabilities;
+                        const vendor = value[key]?.vendorCapabilities?.vendor;
+
+                        // If both capabilities and vendor are missing, skip this entry
+                        if (!capabilities && !vendor) {
+                            continue;
+                        }
+                        // If vendor is missing, only include capabilities
+                        else if (!vendor) {
+                            updatedVendorCapabilities[key] = {
+                                capabilities: capabilities || {}
+                            };
+                        }
+                        // If capabilities are missing, only include vendor
+                        else if (!capabilities) {
+                            updatedVendorCapabilities[key] = {
+                                vendor: vendor || ''
+                            };
+                        }
+                        // If both are present, include both
+                        else {
+                            updatedVendorCapabilities[key] = {
+                                vendor: vendor,
+                                capabilities: capabilities
+                            };
+                        }
+                    }
+
+                    // Structure the driver parameters with the updated vendor capabilities
+                    const driverParameters = {
+                        capabilities: {
+                            vendorCapabilities: updatedVendorCapabilities
+                        }
+                    };
+
+                    // Invoke the callback with the updated driver parameters
+                    setCallback(driverParameters);
+                }
+            );
+
+            // Return the fully constructed vendor capabilities container
+            return vendorContainer;
+        };
 
         // Generate a unique identifier for the plugins settings fields.
         const inputId = newUid();
@@ -1028,13 +1170,14 @@ class CustomG4Fields {
         // Select the controller sub-container within the field container using the unique ID.
         const controller = fieldContainer.querySelector(`#${id}-container`);
 
+        // Create a new Data List Field for selecting the Web Driver.
         CustomFields.newDataListField(
             {
                 container: controller,
                 initialValue: options.initialValue?.driver || 'ChromeDriver',
                 itemSource: 'Driver',
                 label: 'Web Driver',
-                title: 'TODO'
+                title: 'Select the web driver to use.'
             },
             (value) => {
                 const driverParameters = {
@@ -1044,6 +1187,7 @@ class CustomG4Fields {
             }
         );
 
+        // Create a new String Field for specifying the Driver Binaries location.
         CustomFields.newStringField(
             {
                 container: controller,
@@ -1060,11 +1204,13 @@ class CustomG4Fields {
             }
         );
 
+        // Create a container for the "Always Match" capabilities group.
         const alwaysMatchField = newMultipleFieldsContainer(`${inputId}-always-match`, {
             labelDisplayName: 'Always Match Capabilities',
             role: 'always-match-capabilities'
         });
 
+        // Create a new Key-Value Field for "Always Match" capabilities.
         CustomFields.newKeyValueField(
             {
                 container: alwaysMatchField.querySelector('[data-g4-role="always-match-capabilities"]'),
@@ -1082,100 +1228,22 @@ class CustomG4Fields {
             }
         );
 
+        // Append the "Always Match" capabilities container to the main controller.
         controller.appendChild(alwaysMatchField);
 
+        // Create and append the "First Match" capabilities group to the controller.
+        const firstMatchField = newFirstMatchCapabilities(
+            inputId,                                               // Unique identifier
+            options.initialValue?.capabilities?.firstMatch || [{}] // Existing "First Match" data or default
+        );
+        controller.appendChild(firstMatchField);
 
-
-
-        addFirstMatch(inputId, controller, options.initialValue?.capabilities?.firstMatch || [{}]);
-
-
-
-
-
-
-        const addVendorCapabilities = () => {
-            const newDataObject = (vendorCapabilities) => {
-                const dataObject = {};
-                dataObject['vendor'] = {
-                    label: 'Vendor',
-                    title: 'The vendor name associated with the capabilities.',
-                    type: 'TEXT',
-                    value: vendorCapabilities?.vendor || ''
-                };
-
-                dataObject['capabilities'] = {
-                    label: 'Capabilities',
-                    title: 'A collection of capabilities with additional custom information for the invocation.',
-                    type: 'KEYVALUE',
-                    value: vendorCapabilities?.capabilities || {}
-                };
-
-                return dataObject;
-            };
-
-            const vendorCapabilities = options.initialValue?.capabilities?.vendorCapabilities || [{}];
-
-            const dataObjects = [];
-
-            const indexes = Object.keys(vendorCapabilities);
-
-            for (const index of indexes) {
-                const schema = newDataObject(vendorCapabilities[index]);
-                dataObjects.push(schema);
-            }
-
-            if (dataObjects.length === 0) {
-                dataObjects.push(newDataObject(undefined, undefined));
-            }
-
-            const arrayFieldOptions = {
-                addButtonLabel: 'Add Capabilities Group',
-                dataObjects: dataObjects,
-                groupName: 'VendorCapabilities',
-                itemLabel: 'Group',
-                labelDisplayName: "Vendor Capabilities",
-                removeButtonLabel: 'Remove',
-                role: 'container',
-                title: "Vendor Capabilities"
-            };
-
-            const vendorContainer = newObjectArrayFieldsContainer(
-                `${inputId}-vendor-capabilities`,
-                arrayFieldOptions,
-                (value) => {
-                    const vendorCapabilities = {};
-                    const keys = Object.keys(value);
-                    for (const key of keys) {
-                        const capabilities = value[key]?.vendorCapabilities?.capabilities;
-                        const vendor = value[key]?.vendorCapabilities?.vendor;
-                        if (!capabilities && !vendor) {
-                            continue;
-                        }
-                        else if (!vendor) {
-                            vendorCapabilities[key] = {
-                                capabilities: capabilities || {}
-                            };
-                        }
-                        else if (!capabilities) {
-                            vendorCapabilities[key] = {
-                                vendor: vendor || ''
-                            };
-                        }
-                    }
-
-                    const driverParameters = {
-                        capabilities: {
-                            vendorCapabilities: vendorCapabilities
-                        }
-                    };
-                    setCallback(driverParameters);
-                });
-
-            controller.appendChild(vendorContainer);
-        }
-
-        addVendorCapabilities();
+        // Create and append the Vendor Capabilities UI component to the controller.
+        const vendorCapabilitiesField = newVendorCapabilities(
+            inputId,                                                       // Unique identifier
+            options.initialValue?.capabilities?.vendorCapabilities || [{}] // Existing vendor capabilities or default
+        );
+        controller.appendChild(vendorCapabilitiesField);
 
         // If an external container is provided, append the field container to it
         if (options.container) {
