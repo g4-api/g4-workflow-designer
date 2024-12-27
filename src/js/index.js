@@ -666,7 +666,7 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
  * @returns {HTMLElement} The container element housing the editor fields for the step.
  */
 function stepEditorProvider(step, editorContext, _definition) {
-	function initializeField(key, step, type) {
+	const initializeField = (key, step, type) => {
 		let parameter = {}
 		if (type === 'properties') {
 			parameter = step.properties[key];
@@ -811,9 +811,14 @@ function stepEditorProvider(step, editorContext, _definition) {
 
 	// Iterate through the step's properties and add corresponding input fields.
 	const sortedProperties = Object.keys(step.properties).sort((a, b) => a.localeCompare(b));
+	const hasParameters = Object.keys(step.parameters).length > 0;
 	for (let index = 0; index < sortedProperties.length; index++) {
 		const key = sortedProperties[index];
-		initializeField(key, step, "properties");
+		const skip = (hasParameters && key.toLocaleUpperCase() === 'ARGUMENT') || key.toLocaleUpperCase() === 'RULES';
+		
+		if (!skip) {
+			initializeField(key, step, "properties");
+		}
 	}
 
 	// Iterate through the step's parameters and add corresponding input fields.
