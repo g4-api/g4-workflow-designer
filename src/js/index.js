@@ -658,29 +658,54 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
 }
 
 /**
- * Provides an editor interface for a step within a workflow or plugin.
- * 
- * @param {Object} step          - The step object to be edited, containing properties and parameters.
- * @param {Object} editorContext - Context object for notifying changes in the editor.
- * @param {Object} _definition   - Definition object for the step (unused in this implementation).
- * @returns {HTMLElement} The container element housing the editor fields for the step.
+ * Provides a step editor UI component for a given plugin step.
+ *
+ * This function creates and configures the HTML structure necessary for editing a plugin step,
+ * including sections for the plugin's name, properties, and parameters. It utilizes helper functions
+ * from the `CustomFields` and other modules to generate form fields dynamically based on the
+ * provided step's configuration.
+ *
+ * @param {Object} step          - The plugin step configuration object.
+ * @param {Object} editorContext - The context object for the editor, used for notifying changes.
+ * @param {Object} _definition   - Additional definition or metadata for the step (unused in this function).
+ * @returns {HTMLElement} The fully populated step editor container element.
  */
 function stepEditorProvider(step, editorContext, _definition) {
-	const initializeField = (key, step, type) => {
-		let parameter = {}
+	/**
+	 * Initializes and appends the appropriate input field to the container based on the parameter type.
+	 *
+	 * This function dynamically creates and configures input fields within a given container
+	 * for either properties or parameters of a plugin step. It determines the type of the parameter
+	 * and utilizes the corresponding `CustomFields` method to generate the appropriate input field.
+	 * After creation, it sets up event listeners to handle value changes and notify the editor context.
+	 *
+	 * @param {HTMLElement} container - The DOM element that will contain the input field.
+	 * @param {string}      key       - The key/name of the property or parameter.
+	 * @param {Object}      step      - The plugin step object containing properties and parameters.
+	 * @param {string}      type      - Specifies whether the field is a 'properties' or 'parameters' type.
+	 */
+	const initializeField = (container, key, step, type) => {
+		// Initialize an empty parameter object to store the current parameter's properties.
+		let parameter = {};
+
+		// Retrieve the parameter object based on the type ('properties' or 'parameters').
 		if (type === 'properties') {
 			parameter = step.properties[key];
 		} else if (type === 'parameters') {
 			parameter = step.parameters[key];
 		}
 
-		// Check if the parameter type is a list field or an options field.
+		// Determine the nature of the parameter to decide which input field to create.
 		const isListField = _cacheKeys.includes(parameter.type.toUpperCase());
 		const isOptionsField = parameter.optionsList && parameter.optionsList.length > 0;
 		const isArray = parameter.type.toUpperCase() === 'ARRAY';
-		const isSwitch = parameter.type.toUpperCase() === 'SWITCH' || parameter.type.toUpperCase() === 'BOOLEAN' || parameter.type.toUpperCase() === 'BOOL';
-		const isKeyValue = parameter.type.toUpperCase() === 'KEY/VALUE' || parameter.type.toUpperCase() === 'KEYVALUE' || parameter.type.toUpperCase() === 'DICTIONARY';
+		const isSwitch = ['SWITCH', 'BOOLEAN', 'BOOL'].includes(parameter.type.toUpperCase());
+		const isKeyValue = ['KEY/VALUE', 'KEYVALUE', 'DICTIONARY'].includes(parameter.type.toUpperCase());
 
+		/**
+		 * Handles the creation and configuration of a Key-Value input field.
+		 * Updates the parameter value and notifies the editor context upon changes.
+		 */
 		if (isKeyValue) {
 			CustomFields.newKeyValueField(
 				{
@@ -690,17 +715,22 @@ function stepEditorProvider(step, editorContext, _definition) {
 					title: parameter.description
 				},
 				(value) => {
-					// Update the property's value and notify the editor of the change.
+					// Update the parameter's value with the new input.
 					parameter.value = value;
+
+					// Notify the editor context that properties have changed.
 					editorContext.notifyPropertiesChanged();
 				}
 			);
 
-			// Exit the function after creating the key/value field.
+			// Exit the function after creating the Key-Value field.
 			return;
 		}
 
-		// If the parameter is a switch, create a new switch field.
+		/**
+		 * Handles the creation and configuration of a Switch (Boolean) input field.
+		 * Updates the parameter value and notifies the editor context upon changes.
+		 */
 		if (isSwitch) {
 			CustomFields.newSwitchField(
 				{
@@ -710,17 +740,22 @@ function stepEditorProvider(step, editorContext, _definition) {
 					title: parameter.description
 				},
 				(value) => {
-					// Update the property's value and notify the editor of the change.
+					// Update the parameter's value based on the switch toggle.
 					parameter.value = value;
+
+					// Notify the editor context that properties have changed.
 					editorContext.notifyPropertiesChanged();
 				}
 			);
 
-			// Exit the function after creating the switch field.
+			// Exit the function after creating the Switch field.
 			return;
 		}
 
-		// If the parameter is an array, create a new array field.
+		/**
+		 * Handles the creation and configuration of an Array input field.
+		 * Updates the parameter value and notifies the editor context upon changes.
+		 */
 		if (isArray) {
 			CustomFields.newArrayField(
 				{
@@ -730,17 +765,23 @@ function stepEditorProvider(step, editorContext, _definition) {
 					title: parameter.description
 				},
 				(value) => {
-					// Update the property's value and notify the editor of the change.
+					// Update the parameter's array value with the new input.
 					parameter.value = value;
+
+					// Notify the editor context that properties have changed.
 					editorContext.notifyPropertiesChanged();
 				}
 			);
 
-			// Exit the function after creating the array field.
+			// Exit the function after creating the Array field.
 			return;
 		}
 
-		// If the parameter is a list field or an options field, create a dropdown.
+		/**
+		 * Handles the creation and configuration of a Data List (Dropdown) input field.
+		 * Chooses between a list field or options field based on the parameter's properties.
+		 * Updates the parameter value and notifies the editor context upon changes.
+		 */
 		if (isListField || isOptionsField) {
 			const itemSource = isListField ? parameter.type : parameter.optionsList;
 			CustomFields.newDataListField(
@@ -752,17 +793,23 @@ function stepEditorProvider(step, editorContext, _definition) {
 					title: parameter.description
 				},
 				(value) => {
-					// Update the property's value and notify the editor of the change.
+					// Update the parameter's value based on the selected option.
 					parameter.value = value;
+
+					// Notify the editor context that properties have changed.
 					editorContext.notifyPropertiesChanged();
 				}
 			);
 
-			// Exit the function after creating the data list field.
+			// Exit the function after creating the Data List field.
 			return;
 		}
 
-		// Add a string input field for the parameter.
+		/**
+		 * Handles the creation and configuration of a String input field.
+		 * Defaults to this type if none of the above conditions are met.
+		 * Updates the parameter value and notifies the editor context upon changes.
+		 */
 		CustomFields.newStringField(
 			{
 				container: container,
@@ -772,30 +819,47 @@ function stepEditorProvider(step, editorContext, _definition) {
 				title: parameter.description
 			},
 			(value) => {
-				// Update the step's properties and notify the editor of the change.
+				// Update the parameter's string value with the new input.
 				parameter.value = value;
+
+				// Notify the editor context that properties have changed.
 				editorContext.notifyPropertiesChanged();
 			}
 		);
-	}
+	};
 
-	// Create the main container element for the editor.
-	const container = document.createElement('div');
-	container.title = step.description; // Set tooltip text to the step's description.
+	// Generate a unique identifier for input elements within the editor.
+	const inputId = newUid();
 
-	// Add a title element to the container.
+	// Escape the generated ID to ensure it's safe for use in CSS selectors.
+	const escapedId = CSS.escape(inputId);
+
+	// Create the main container element for the step editor.
+	const stepEditorContainer = document.createElement('div');
+	stepEditorContainer.setAttribute("g4-role", "step-editor");
+	// Set the tooltip for the container to provide a description of the step.
+	stepEditorContainer.title = step.description;
+
+	/**
+	 * Add a title section to the container.
+	 * This includes the plugin's name converted from PascalCase to space-separated words,
+	 * the plugin type as a subtitle, and a help text containing the step's description.
+	 */
 	CustomFields.newTitle({
-		container: container,
+		container: stepEditorContainer,
 		titleText: convertPascalToSpaceCase(step.pluginName),
 		subTitleText: step.pluginType,
 		helpText: step.description
 	});
 
-	// Add a string input field for the plugin name.
-	// This field is always read-only.
+	/**
+	 * Add a name input field for the plugin.
+	 * This field allows users to view and edit the name of the plugin.
+	 * It is not read-only, enabling dynamic changes to the plugin's name.
+	 */
 	CustomFields.newNameField(
 		{
-			container: container,
+			container: stepEditorContainer,
 			initialValue: step.name,
 			isReadonly: false,
 			label: 'Plugin Name',
@@ -803,33 +867,99 @@ function stepEditorProvider(step, editorContext, _definition) {
 			step: step
 		},
 		(value) => {
-			// Update the step's name and notify the editor of the change.
+			// Update the step's name with the new value entered by the user.
 			step.name = value;
+
+			// Notify the editor context that the plugin name has changed.
 			editorContext.notifyNameChanged();
 		}
 	);
 
-	// Iterate through the step's properties and add corresponding input fields.
+	/**
+	 * Sort the properties of the step alphabetically for consistent display.
+	 */
 	const sortedProperties = Object.keys(step.properties).sort((a, b) => a.localeCompare(b));
+	// Determine if the step has any parameters defined.
 	const hasParameters = Object.keys(step.parameters).length > 0;
+
+	/**
+	 * Create a container for the Properties section.
+	 * This container includes a label, role attribute, and a hint text explaining the purpose of properties.
+	 */
+	const propertiesFieldContainer = newMultipleFieldsContainer(`${inputId}`, {
+		labelDisplayName: 'Properties',
+		role: 'properties-container',
+		hintText: 'Attributes that define the structural and operational behavior of the plugin.'
+	});
+
+	// Select the specific container within the Properties section where individual property fields will be added.
+	const propertiesControllerContainer = propertiesFieldContainer.querySelector(`#${escapedId}-properties-container`);
+
+	/**
+	 * Iterate through each sorted property key to initialize corresponding input fields.
+	 * Certain properties like 'Argument' and 'Rules' are conditionally skipped based on the presence of parameters.
+	 */
 	for (let index = 0; index < sortedProperties.length; index++) {
+		// Retrieve the current property key from the sorted list.
 		const key = sortedProperties[index];
-		const skip = (hasParameters && key.toLocaleUpperCase() === 'ARGUMENT') || key.toLocaleUpperCase() === 'RULES';
-		
+
+		// Determine if the current property should be skipped.
+		const skip = (hasParameters && key.toUpperCase() === 'ARGUMENT') || key.toUpperCase() === 'RULES';
+
+		// Skip the property if it meets the conditions above.
 		if (!skip) {
-			initializeField(key, step, "properties");
+			initializeField(propertiesControllerContainer, key, step, "properties");
 		}
 	}
 
-	// Iterate through the step's parameters and add corresponding input fields.
-	const sortedParameters = Object.keys(step.parameters).sort((a, b) => a.localeCompare(b));
-	for (let index = 0; index < sortedParameters.length; index++) {
-		const key = sortedParameters[index];
-		initializeField(key, step, "parameters");
+	/**
+	 * Append the Properties section to the main container if there are any properties to display.
+	 */
+	if (sortedProperties.length > 0) {
+		stepEditorContainer.appendChild(propertiesFieldContainer);
 	}
 
-	// Return the populated container element.
-	return container;
+	/**
+	 * Sort the parameters of the step alphabetically for consistent display.
+	 */
+	const sortedParameters = Object.keys(step.parameters).sort((a, b) => a.localeCompare(b));
+
+	/**
+	 * Create a container for the Parameters section.
+	 * This container includes a label, role attribute, and a hint text explaining the purpose of parameters.
+	 */
+	const parametersFieldContainer = newMultipleFieldsContainer(`${inputId}`, {
+		labelDisplayName: 'Parameters',
+		role: 'parameters-container',
+		hintText: "Configurable inputs that customize and control the plugin's functionality."
+	});
+
+	// Select the specific container within the Parameters section where individual parameter fields will be added.
+	const parametersControllerContainer = parametersFieldContainer.querySelector(`#${escapedId}-parameters-container`);
+
+	/**
+	 * Iterate through each sorted parameter key to initialize corresponding input fields.
+	 */
+	for (let index = 0; index < sortedParameters.length; index++) {
+		// Retrieve the current parameter key from the sorted list.
+		const key = sortedParameters[index];
+
+		// Initialize the input field for the current parameter key.
+		initializeField(parametersControllerContainer, key, step, "parameters");
+	}
+
+	/**
+	 * Append the Parameters section to the main container if there are any parameters to display.
+	 */
+	if (sortedParameters.length > 0) {
+		stepEditorContainer.appendChild(parametersFieldContainer);
+	}
+
+	/**
+	 * Return the fully populated step editor container element.
+	 * This element includes sections for the plugin's name, properties, and parameters.
+	 */
+	return stepEditorContainer;
 }
 
 // Initialize the designer when the window has loaded
