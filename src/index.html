@@ -7,6 +7,9 @@
 
 	<title>Sequential Workflow Designer</title>
 	<link rel="icon" href="./images/favicon.ico" />
+	<link href="./css/designer.css" rel="stylesheet">
+	<link href="./css/designer-light.css" rel="stylesheet">
+	<link href="./css/designer-dark.css" rel="stylesheet">
 	<style>
 		body,
 		input,
@@ -46,7 +49,6 @@
 		}
 
 		.sqd-smart-editor {
-			width: 100%;
 			height: 100%;
 			overflow: auto;
 		}
@@ -56,6 +58,14 @@
 			font-weight: 700;
 			font-size: 1.05em;
 			margin-top: 0;
+		}
+
+		.sqd-layout-desktop .sqd-smart-editor {
+			width: 350px;
+		}
+
+		.sqd-layout-desktop .sqd-smart-editor-toggle {
+			right: 350px;
 		}
 
 		.sqd-editor input[type='text'],
@@ -271,7 +281,6 @@
 	<style>
 		details {
 			border: 1px solid silver;
-			border-radius: 4px;
 			border-radius: 0px;
 			padding: 10px;
 			max-width: 500px;
@@ -315,10 +324,6 @@
 		<h5>Console</h5>
 		<pre id="console"></pre>
 	</div>
-
-	<link href="./css/designer.css" rel="stylesheet">
-	<link href="./css/designer-light.css" rel="stylesheet">
-	<link href="./css/designer-dark.css" rel="stylesheet">
 
 	<script src="./js/custom-fields.js"></script>
 	<script src="./js/index.umd.js"></script>
