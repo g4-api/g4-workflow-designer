@@ -62,7 +62,7 @@ async function onRunClicked() {
 		},
 
 		beforeStepExecution: (step, data) => {
-			document.getElementById('variables').innerText = JSON.stringify(data, null, 2) + '\r\n';
+			//document.getElementById('variables').innerText = JSON.stringify(data, null, 2) + '\r\n';
 			_designer.selectStepById(step.id);
 			_designer.moveViewportToStep(step.id);
 		},
@@ -170,7 +170,7 @@ async function initializeDesigner() {
 	_designer = sequentialWorkflowDesigner.Designer.create(designerHtmlElement, startDefinition, configuration);
 
 	// Attach an event listener to the "Run" button for executing workflows.
-	document.getElementById('run').addEventListener('click', onRunClicked);
+	//document.getElementById('run').addEventListener('click', onRunClicked);
 }
 
 /**
