@@ -4,6 +4,7 @@ let _designer;
 let _cache = {};
 let _cacheKeys = [];
 let _manifests = {};
+let _definition = {};
 
 async function startDefinition() {
 	if (_designer.isReadonly()) {
@@ -198,67 +199,180 @@ function initializeStartDefinition(manifest) {
 	return [stage];
 }
 
+/**
+ * Creates a new configuration object for the application.
+ *
+ * This function initializes the configuration settings, including toolbox setup,
+ * step icon provisioning, validation rules, editor providers, and control bar settings.
+ *
+ * @returns {Object} The configuration object containing all necessary settings.
+ *
+ * @property {number}  undoStackSize - The maximum number of undo operations allowed.
+ * @property {Object}  toolbox       - Configuration for the toolbox UI component.
+ * @property {Object}  steps         - Configuration related to step icons and types.
+ * @property {Object}  validator     - Validation rules for steps and the root definition.
+ * @property {Object}  editors       - Providers for root and step editors.
+ * @property {boolean} controlBar    - Flag to enable or disable the control bar.
+ *
+ * @example
+ * const config = newConfiguration();
+ * initializeApplication(config);
+ */
 function newConfiguration() {
 	return {
+		// Maximum number of undo operations the user can perform
 		undoStackSize: 5,
 
+		/**
+		 * Configuration for the toolbox UI component.
+		 *
+		 * @property {Array} groups - An array to hold different groups within the toolbox.
+		 * @property {Function} itemProvider - Function to create toolbox items based on a step.
+		 */
 		toolbox: {
+			// Initialize with no groups; groups can be added dynamically
 			groups: [],
 
-			// Custom item template function
+			/**
+			 * Creates a toolbox item DOM element based on the provided step.
+			 *
+			 * @param {Object} step               - The step object containing details to create the toolbox item.
+			 * @param {string} step.description   - A description of the step, used as a tooltip.
+			 * @param {string} step.componentType - The component type of the step, used to determine the icon.
+			 * @param {string} step.type          - The specific type of the step, used to select the appropriate icon.
+			 * @param {string} step.name          - The display name of the step.
+			 *
+			 * @returns {HTMLElement} The constructed toolbox item element.
+			 *
+			 * @example
+			 * const step = {
+			 *     description: 'Loop Step',
+			 *     componentType: 'workflow',
+			 *     type: 'loop',
+			 *     name: 'Loop'
+			 * };
+			 * const toolboxItem = toolbox.itemProvider(step);
+			 * document.body.appendChild(toolboxItem);
+			 */
 			itemProvider: (step) => {
+				// Create the main container div for the toolbox item
 				const item = document.createElement('div');
 				item.className = 'sqd-toolbox-item';
 
-				// Set the tooltip using the 'title' attribute
+				// If a description is provided, set it as the tooltip (title attribute)
 				if (step.description) {
 					item.title = step.description;
 				}
 
-				// Create the icon element
+				// Create the image element for the step icon
 				const icon = document.createElement('img');
+
+				// Set the class name for the icon element
 				icon.className = 'sqd-toolbox-item-icon';
+
+				// Set the source of the icon using the iconUrlProvider function
 				icon.src = newConfiguration.steps.iconUrlProvider(step.componentType, step.type);
 
-				// Create the name element
+				// Create the div element for the step name
 				const name = document.createElement('div');
 				name.className = 'sqd-toolbox-item-name';
-				name.textContent = step.name;
+				name.textContent = step.name; // Set the text content to the step's name
 
-				// Append the icon and name to the item container
+				// Append the icon and name to the main item container
 				item.appendChild(icon);
 				item.appendChild(name);
 
+				// Return the fully constructed toolbox item
 				return item;
 			}
 		},
 
+		/**
+		 * Configuration related to step icons and types.
+		 *
+		 * @property {Function} iconUrlProvider - Function to determine the icon URL based on component type and step type.
+		 */
 		steps: {
-			iconUrlProvider: (componentType, type) => {
+			/**
+			 * Provides the URL for the step icon based on its component type and specific type.
+			 *
+			 * @param {string} componentType - The component type of the step (e.g., 'workflow').
+			 * @param {string} type - The specific type of the step (e.g., 'loop', 'if').
+			 *
+			 * @returns {string} The URL to the corresponding SVG icon.
+			 *
+			 * @example
+			 * const iconUrl = newConfiguration.steps.iconUrlProvider('workflow', 'loop');
+			 * console.log(iconUrl); // Outputs: './images/icon-loop.svg'
+			 */
+			iconUrlProvider: (_, type) => {
+				// Define the list of supported icon types
 				const supportedIcons = ['if', 'loop', 'text', 'job', 'stage'];
+
+				// Determine the filename based on the type; default to 'task' if type is unsupported
 				const fileName = supportedIcons.includes(type) ? type : 'task';
+
+				// Return the relative path to the SVG icon
 				return `./images/icon-${fileName}.svg`;
-			},
-			// canInsertStep: (step, _, container, a, b, c, d) => {
-			// 	var a = designer;
-			// 	var b = "";
-			// }
+			}
 		},
 
+		/**
+		 * Validation rules for steps and the root definition.
+		 *
+		 * @property {Function} step - Validates individual step properties.
+		 * @property {Function} root - Validates the root definition properties.
+		 */
 		validator: {
+			/**
+			 * Validates that all properties of a step are truthy (i.e., not null, undefined, false, 0, or '').
+			 *
+			 * @param {Object} step - The step object to validate.
+			 * @param {Object} step.properties - An object containing the properties of the step.
+			 *
+			 * @returns {boolean} True if all properties are valid, false otherwise.
+			 *
+			 * @example
+			 * const step = { properties: { name: 'Loop', count: 3 } };
+			 * const isValid = validator.step(step);
+			 * console.log(isValid); // Outputs: true
+			 */
 			step: step => {
+				// Check that every property key in step.properties has a truthy value
 				return Object.keys(step.properties).every(n => !!step.properties[n]);
 			},
+
+			/**
+			 * Validates that the 'speed' property of the root definition is greater than 0.
+			 *
+			 * @param {Object} definition - The root definition object to validate.
+			 * @param {number} definition.properties.speed - The speed property to validate.
+			 *
+			 * @returns {boolean} True if the 'speed' property is greater than 0, false otherwise.
+			 *
+			 * @example
+			 * const definition = { properties: { speed: 10 } };
+			 * const isValid = validator.root(definition);
+			 * console.log(isValid); // Outputs: true
+			 */
 			root: definition => {
+				// Ensure that the 'speed' property exists and is greater than 0
 				return definition.properties['speed'] > 0;
 			}
 		},
 
+		/**
+		 * Providers for root and step editors.
+		 *
+		 * @property {Function} rootEditorProvider - Function to provide the editor for the root definition.
+		 * @property {Function} stepEditorProvider - Function to provide the editor for individual steps.
+		 */
 		editors: {
 			rootEditorProvider,
 			stepEditorProvider
 		},
 
+		// Flag to enable the control bar in the UI
 		controlBar: true
 	};
 }
@@ -277,7 +391,7 @@ function newStartDefinition(sequence) {
 		id: uid(),
 		// Default properties for the start definition.
 		properties: {
-			speed: 300 // Default speed value (can be adjusted as needed).
+			speed: 300
 		},
 		// The provided sequence of steps or containers.
 		sequence

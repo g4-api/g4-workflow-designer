@@ -6,6 +6,7 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
 
 	<title>Sequential Workflow Designer</title>
+
 	<link rel="icon" href="./images/favicon.ico" />
 	<link href="./css/designer.css" rel="stylesheet">
 	<link href="./css/designer-light.css" rel="stylesheet">
@@ -277,7 +278,7 @@
 			vertical-align: middle;
 		}
 
-		div[data-g4-role='custom-buttons']{
+		div[data-g4-role='custom-buttons'] {
 			margin-top: 0.2em;
 		}
 
@@ -344,22 +345,22 @@
 			.then((controlBar) => {
 				// SVG path data for the Export button icon
 				const exportSvg = "M960 608a32 32 0 0 0-32 32v288h-288a32 32 0 0 0 0 64h320a32 32 0 0 0 32-32V640a32 32 0 0 0-32-32zM512 928h-128a32 32 0 0 0 0 64h128a32 32 0 0 0 0-64zM278.72 937.28a32 32 0 0 0-34.88-6.72 29.76 29.76 0 0 0-10.56 6.72 32 32 0 0 0-6.72 10.56A32 32 0 0 0 224 960a32 32 0 0 0 54.72 22.72 37.12 37.12 0 0 0 6.72-10.56 30.08 30.08 0 0 0 0-24.32 29.76 29.76 0 0 0-6.72-10.56zM128 928H96v-288a32 32 0 0 0-64 0v320a32 32 0 0 0 32 32h64a32 32 0 0 0 0-64zM743.68 491.2a32 32 0 1 0 48.64 41.6l192-224a30.08 30.08 0 0 0 1.92-3.52 32 32 0 0 0 2.56-4.16v-2.24a32 32 0 0 0 0-5.12A32 32 0 0 0 992 288a32 32 0 0 0 0-4.8 32 32 0 0 0 0-5.12v-2.24a32 32 0 0 0-2.56-4.16 30.08 30.08 0 0 0-1.92-3.52l-192-224a32 32 0 0 0-48.64 41.6L890.56 256H480v480a32 32 0 0 0 64 0V320h346.56z";
-	
+
 				// SVG path data for the Import button icon
 				const importSvg = "M960 608a32 32 0 0 0-32 32v288h-288a32 32 0 0 0 0 64h320a32 32 0 0 0 32-32V640a32 32 0 0 0-32-32zM512 928h-128a32 32 0 0 0 0 64h128a32 32 0 0 0 0-64zM278.72 937.28a32 32 0 0 0-34.88-6.72 29.76 29.76 0 0 0-10.56 6.72 32 32 0 0 0-6.72 10.56A32 32 0 0 0 224 960a32 32 0 0 0 54.72 22.72 37.12 37.12 0 0 0 6.72-10.56 30.08 30.08 0 0 0 0-24.32 29.76 29.76 0 0 0-6.72-10.56zM128 928H96v-288a32 32 0 0 0-64 0v320a32 32 0 0 0 32 32h64a32 32 0 0 0 0-64zM64 96h416v570.56l-171.2-146.88a32 32 0 0 0-41.6 48.64l224 192a32 32 0 0 0 4.8 2.88l2.56 1.6a30.08 30.08 0 0 0 23.36 0l2.24-1.6a32 32 0 0 0 4.8-2.88l224-192a32 32 0 0 0-41.6-48.64L544 666.56V64a32 32 0 0 0-32-32H64a32 32 0 0 0 0 64z";
-	
+
 				// SVG path data for the Start button icon
 				const startSvg = "M10 10 L10 90 L90 50 Z";
-	
+
 				// SVG path data for the Stop button icon
 				const stopSvg = "M10,10 L90,10 L90,90 L10,90 Z";
-	
+
 				// Create a container div for the custom buttons
 				const customButtonsContainer = document.createElement("div");
 
 				// Set a custom data attribute for identification
 				customButtonsContainer.setAttribute('data-g4-role', 'custom-buttons');
-	
+
 				/**
 				 * Creates and configures the Export Definition button.
 				 */
@@ -375,7 +376,7 @@
 						console.log('Export Definition');
 					}
 				});
-	
+
 				/**
 				 * Creates and configures the Import Definition button.
 				 */
@@ -391,7 +392,7 @@
 						console.log('Import Definition');
 					}
 				});
-	
+
 				/**
 				 * Creates and configures the Stop Definition button.
 				 */
@@ -406,7 +407,7 @@
 						console.log('Stop Definition');
 					}
 				});
-	
+
 				/**
 				 * Creates and configures the Start Definition button.
 				 *
@@ -422,7 +423,7 @@
 					// Event handler for starting the definition process
 					onClick: startDefinition
 				});
-	
+
 				// Append the container with custom buttons to the existing control bar
 				controlBar.appendChild(customButtonsContainer);
 			})
@@ -431,5 +432,5 @@
 				console.error(`Error waiting for element: ${error.message}`);
 			});
 	</script>
-	
+
 </html>
