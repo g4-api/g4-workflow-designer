@@ -30,14 +30,14 @@ function uid() {
  * assertObject(undefined);     // returns false
  */
 function assertObject(value) {
-    // Exclude `null` since `typeof null` returns 'object', but it's a primitive.
-    if (value === null) {
-        return false;
-    }
+	// Exclude `null` since `typeof null` returns 'object', but it's a primitive.
+	if (value === null) {
+		return false;
+	}
 
-    // Check if the type of the value is 'object' or 'function'.
-    // In JavaScript, functions are considered objects.
-    return (typeof value === 'object' || typeof value === 'function');
+	// Check if the type of the value is 'object' or 'function'.
+	// In JavaScript, functions are considered objects.
+	return (typeof value === 'object' || typeof value === 'function');
 }
 
 /**
@@ -109,8 +109,8 @@ class StateMachine {
 		this.callstack.pop();
 	}
 
-	executeIfStep(step) {
-		const value = this.handler.executeIf(step, this.data);
+	async executeIfStep(step) {
+		const value = await this.handler.executeIf(step, this.data);
 		const branchName = value ? 'true' : 'false';
 
 		this.callstack.push({
@@ -173,11 +173,13 @@ class StateMachine {
 			this.handler.beforeStepExecution(step, this.data);
 		}
 
-		switch (step.componentType) {
+		switch (step.type) {
 			case "container":
+			case "stage":
+			case "job":
 				this.executeContainer(step);
 				break;
-			case 'switch':
+			case 'if':
 				this.executeIfStep(step);
 				break;
 			case 'loop':
@@ -439,6 +441,60 @@ class G4Client {
 	}
 
 	/**
+	 * Asserts that all entities within each extraction of the plugin response have a valid 'Evaluation' status.
+	 *
+	 * This method checks whether every extraction in the provided `pluginResponse` contains entities
+	 * where the 'Evaluation' field is either missing or explicitly set to `true`. If any entity has
+	 * an 'Evaluation' field set to `false` or any other falsy value, the assertion fails.
+	 *
+	 * @param {Object} pluginResponse - The response object from the plugin containing extraction data.
+	 * @param {Array}  pluginResponse.extractions                      - An array of extraction objects to be validated.
+	 * @param {Array}  pluginResponse.extractions[].entities           - An array of entity objects within each extraction.
+	 * @param {Object} pluginResponse.extractions[].entities[].content - The content object of each entity, potentially containing an 'Evaluation' field.
+	 *
+	 * @returns {boolean} Returns `true` if all entities pass the validation criteria, otherwise `false`.
+	 *
+	 * @throws {TypeError} Throws an error if `pluginResponse` is not an object or if `extractions` is not an array.
+	 *
+	 * @example
+	 * const pluginResponse = {
+	 *     extractions: [
+	 *         {
+	 *             entities: [
+	 *                 { content: { name: 'Entity1', Evaluation: true } },
+	 *                 { content: { name: 'Entity2' } } // 'Evaluation' is missing, considered true
+	 *             ]
+	 *         },
+	 *         {
+	 *             entities: [
+	 *                 { content: { name: 'Entity3', Evaluation: true } },
+	 *                 { content: { name: 'Entity4', Evaluation: false } } // Evaluation is false
+	 *             ]
+	 *         }
+	 *     ]
+	 * };
+	 *
+	 * const isValid = assertPlugin(pluginResponse);
+	 * console.log(isValid); // Output: false
+	 */
+	assertPlugin(pluginResponse) {
+		// Extract the 'extractions' array from the pluginResponse object
+		const extractions = pluginResponse.extractions;
+
+		// Ensure that 'extractions' is an array and perform validation
+		return extractions.every(extraction =>
+			extraction.entities.every(entity => {
+				// If the 'Evaluation' field is missing in the entity's content, consider it as true
+				if (!('Evaluation' in entity.content)) {
+					return true;
+				}
+				// If the 'Evaluation' field exists, it must be explicitly set to true
+				return entity.content["Evaluation"] === true;
+			})
+		);
+	}
+
+	/**
 	 * Converts a step object into a rule object for the G4 Automation Sequence.
 	 *
 	 * This function transforms a given `step` object, which contains plugin information,
@@ -614,8 +670,139 @@ class G4Client {
 			rule["argument"] = `{{$ ${parameters.join(" ")}}}`;
 		}
 
+		// Normalize rules to avoid bad requests.
+		rule.rules = Array.isArray(rule.rules) && rule.rules.length > 0 ? rule.rules : [];
+
+		// Add a reference to the step in the rule object.
+		rule.reference = {
+			id: step.id
+		}
+
 		// Return the fully constructed rule object.
 		return rule;
+	}
+
+	/**
+	 * Searches for a plugin within the provided G4 response model that matches the given reference ID.
+	 *
+	 * This function traverses the nested structure of the G4 response model, iterating through sessions,
+	 * response trees, stages, jobs, and plugins to locate a plugin with a matching reference ID.
+	 *
+	 * @param {string} referenceId     - The reference ID to search for within the plugins.
+	 * @param {Object} g4ResponseModel - The G4 response model object containing nested plugin data.
+	 *
+	 * @returns {Object|null} The plugin object that matches the reference ID, or null if not found.
+	 *
+	 * @throws {TypeError} Throws an error if `g4ResponseModel` is not a non-null object or if `referenceId` is not a string.
+	 *
+	 * @example
+	 * const referenceId = 'plugin-12345';
+	 * const g4ResponseModel = {
+	 *     response1: {
+	 *         sessions: {
+	 *             session1: {
+	 *                 responseTree: {
+	 *                     stages: [
+	 *                         {
+	 *                             jobs: [
+	 *                                 {
+	 *                                     plugins: [
+	 *                                         { performancePoint: { reference: { id: 'plugin-12345' } }, name: 'Plugin A' },
+	 *                                         { performancePoint: { reference: { id: 'plugin-67890' } }, name: 'Plugin B' }
+	 *                                     ]
+	 *                                 }
+	 *                             ]
+	 *                         }
+	 *                     ]
+	 *                 }
+	 *             }
+	 *         }
+	 *     }
+	 * };
+	 *
+	 * const foundPlugin = findPlugin(referenceId, g4ResponseModel);
+	 * console.log(foundPlugin);
+	 * // Output: { performancePoint: { reference: { id: 'plugin-12345' } }, name: 'Plugin A' }
+	 */
+	findPlugin(referenceId, g4ResponseModel) {
+		/**
+		 * Generator function to traverse all plugins within the G4 response model.
+		 *
+		 * Iterates through each response, session, response tree, stage, job, and plugin,
+		 * yielding each plugin encountered.
+		 *
+		 * @param {Object} g4ResponseModel - The G4 response model to traverse.
+		 * @yields {Object} Each plugin object found within the response model.
+		 */
+		function* traversePlugins(g4ResponseModel) {
+			// Iterate over each response in the G4 response model
+			for (const response of Object.values(g4ResponseModel)) {
+				// Extract the sessions object from the current response
+				const sessions = response.sessions;
+
+				// Continue to the next response if sessions is not an object
+				if (!sessions || typeof sessions !== 'object') continue;
+
+				// Iterate over each session within the current response
+				for (const session of Object.values(sessions)) {
+					// Extract the response tree object from the current session
+					const responseTree = session.responseTree;
+
+					// Continue to the next session if responseTree is not an object
+					if (!responseTree || typeof responseTree !== 'object') continue;
+
+					const stages = responseTree.stages;
+					// Continue to the next session if stages is not an array
+					if (!Array.isArray(stages)) continue;
+
+					// Iterate over each stage within the response tree
+					for (const stage of stages) {
+						// Extract the jobs array from the current stage
+						const jobs = stage.jobs;
+
+						// Continue to the next stage if jobs is not an array
+						if (!Array.isArray(jobs)) continue;
+
+						// Iterate over each job within the current stage
+						for (const job of jobs) {
+							// Extract the plugins array from the current job
+							const plugins = job.plugins;
+
+							// Continue to the next job if plugins is not an array
+							if (!Array.isArray(plugins)) continue;
+
+							// Iterate over each plugin within the current job and yield it
+							for (const plugin of plugins) {
+								yield plugin;
+							}
+						}
+					}
+				}
+			}
+		}
+
+		// Input validation to ensure `g4ResponseModel` is a non-null object
+		if (typeof g4ResponseModel !== 'object' || g4ResponseModel === null) {
+			throw new TypeError('g4ResponseModel must be a non-null object');
+		}
+
+		// Input validation to ensure `referenceId` is a string
+		if (typeof referenceId !== 'string') {
+			throw new TypeError('referenceId must be a string');
+		}
+
+		// Traverse through all plugins and search for the one with the matching reference ID
+		for (const plugin of traversePlugins(g4ResponseModel)) {
+
+			// Check if the plugin's performancePoint.reference.id matches the referenceId
+			// Return the matching plugin
+			if (plugin.performancePoint?.reference?.id === referenceId) {
+				return plugin;
+			}
+		}
+
+		// Return null if no matching plugin is found
+		return null;
 	}
 
 	/**
@@ -802,7 +989,8 @@ class G4Client {
 	newAutomation(authentication, driverParameters) {
 		driverParameters = driverParameters || {
 			"driver": "MicrosoftEdgeDriver",
-			"driverBinaries": "https://gravityapi1:pyhBifB6z1YxJv53xLip@hub-cloud.browserstack.com/wd/hub",
+			//"driverBinaries": "https://gravityapi1:pyhBifB6z1YxJv53xLip@hub-cloud.browserstack.com/wd/hub",
+			"driverBinaries": "E:\\Binaries\\Automation\\WebDrivers",
 			"capabilities": {
 				"alwaysMatch": {
 					"browserName": "MicrosoftEdge"

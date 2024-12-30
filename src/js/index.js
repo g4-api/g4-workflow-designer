@@ -7,6 +7,81 @@ let _manifests = {};
 let _definition = {};
 
 async function startDefinition() {
+	/**
+	 * Invokes a specific rule within a given session using automation rules.
+	 *
+	 * This asynchronous function performs the following actions:
+	 * 1. Prepares the automation configuration by assigning the provided `rule` to the first job of the first stage.
+	 * 2. Sets the driver parameters based on the provided `session`. If `session` is undefined, existing driver parameters are retained.
+	 * 3. Invokes the automation process asynchronously using `client.invokeAutomation` and awaits the result.
+	 * 4. Extracts the new session identifier from the automation result for further processing.
+	 * 5. Returns an object containing the new session identifier and the full automation result.
+	 *
+	 * @param {string} [session] - The current session identifier. If undefined, existing driver parameters are retained.
+	 * @param {Object} rule        - The rule object to be invoked, containing necessary details for automation.
+	 *
+	 * @returns {Promise<{ session: string, automationResult: Object }>} 
+	 *          A promise that resolves to an object containing the new session identifier and the automation result after successfully invoking the rule.
+	 *
+	 * @throws {Error} Throws an error if the automation invocation fails or if the expected structure is not present in the result.
+	 *
+	 * @example
+	 * const currentSession = 'session-123';
+	 * const rule = {
+	 *     name: 'InitializeRule',
+	 *     type: 'setup',
+	 *     // Additional rule properties...
+	 * };
+	 *
+	 * invokeStep(currentSession, rule)
+	 *     .then(({ session, automationResult }) => {
+	 *         console.log('New session:', session);
+	 *         console.log('Automation Result:', automationResult);
+	 *     })
+	 *     .catch(error => {
+	 *         console.error('Error invoking rule:', error);
+	 *     });
+	 */
+	const invokeStep = async (session, rule) => {
+		// Create an array of rules, currently containing only the provided rule.
+		const rules = [rule];
+
+		// Assign the generated rules to the first job of the first stage in the automation configuration.
+		automation.stages[0].jobs[0].rules = rules;
+
+		// Update the driver parameters based on the provided session.
+		// If `session` is undefined, retain the existing driver parameters.
+		// Otherwise, set the driver to reference the new session ID.
+		automation.driverParameters = session === undefined
+			? automation.driverParameters
+			: { driver: `Id(${session})` };
+
+		try {
+			// Invoke the automation process asynchronously and wait for the result.
+			const automationResult = await client.invokeAutomation(automation);
+
+			// Extract the first key from the automation result object.
+			// This key typically represents the main response or a specific response type.
+			const responseKey = Object.keys(automationResult)[0];
+
+			// Extract the first session ID from the sessions object within the response.
+			// This assumes that there is at least one session present in the response.
+			session = Object.keys(automationResult[responseKey].sessions)[0];
+
+			// Return an object containing the new session ID and the full automation result.
+			return {
+				session,
+				automationResult
+			};
+		} catch (error) {
+			// Handle any errors that occur during the automation invocation.
+			console.error('Automation invocation failed:', error);
+
+			// Rethrow the error after logging to allow further handling upstream.
+			throw error;
+		}
+	};
+
 	if (_designer.isReadonly()) {
 		return;
 	}
@@ -24,33 +99,44 @@ async function startDefinition() {
 	const automation = client.newAutomation(undefined, undefined);
 
 	const stateMachine = new StateMachine(definition, {
-		executeStep: async (step, data) => {
-			// Convert the step to a rule and prepare the automation configuration.
+		// Implement the `executeStep` method to execute a step asynchronously.
+		executeStep: async (step) => {
+			// Convert the step to a rule.
 			const rule = client.convertToRule(step);
-			const rules = [rule];
 
-			// Assign the rules to the first job of the first stage.
-			automation.stages[0].jobs[0].rules = rules;
+			// Invoke the step asynchronously and wait for the result.
+			const response = await invokeStep(session, rule);
 
-			// Set driver parameters based on the session.
-			automation.driverParameters = session === undefined
-				? automation.driverParameters
-				: { driver: `Id(${session})` };
-
-			// Invoke the automation asynchronously and wait for the result.
-			const automationResult = await client.invokeAutomation(automation);
-
-			// Extract session information from the result.
-			const responseKey = Object.keys(automationResult)[0];
-			session = Object.keys(automationResult[responseKey].sessions)[0];
+			// Extract the session from the response for further steps.
+			session = response.session;
 		},
 
-		executeIf: (step, data) => {
-			var varName = step.properties['var'];
-			//createVariableIfNeeded(varName, data);
-			return data[varName] > step.properties['val'];
+		// Implement the `executeIf` method to execute an "If" step asynchronously.
+		executeIf: async (step) => {
+			// Convert the step to a rule.
+			const rule = client.convertToRule(step);
+
+			// Override the plugin name to "Assert" for the "If" step.
+			// This is necessary to ensure the correct plugin is invoked under the sequential automation.
+			// This is only required for the "If" step when running in a sequential workflow designer.
+			rule.pluginName = "Assert";
+
+			// Invoke the step asynchronously and wait for the result.
+			const response = await invokeStep(session, rule);
+
+			// Find the plugin based on the step ID and the automation result.
+			const plugin = client.findPlugin(step.id, response.automationResult);
+
+			// Extract the session from the response for further steps.
+			session = response.session;
+
+			// Evaluate the automation result to determine if the assertion passed.
+			return client.assertPlugin(plugin);
 		},
 
+		// for loop    : convert the argument to a number and execute the loop that many times
+		// while loop  : assert the plugin response and execute the loop until the assertion fails or the loop limit is reached
+		// foreach loop: TBD
 		initLoopStep: (step, data) => {
 			const varName = step.properties['var'];
 			//createVariableIfNeeded(varName, data);
