@@ -5,7 +5,7 @@ let _cache = {};
 let _cacheKeys = [];
 let _manifests = {};
 
-async function onRunClicked() {
+async function startDefinition() {
 	if (_designer.isReadonly()) {
 		return;
 	}
