@@ -86,6 +86,101 @@ function convertPascalToSpaceCase(str) {
 class StateMachine {
 	isInterrupted = false;
 
+	/**
+	 * Handler for managing a simple for-loop mechanism within automation steps.
+	 *
+	 * The `forLoopHandler` object provides two primary methods:
+	 * 1. `initialize` - Sets up the initial loop counter based on the provided argument.
+	 * 2. `assert` - Determines whether the loop should continue by decrementing and checking the loop counter.
+	 *
+	 * @typedef {Object} ForLoopHandler
+	 * @property {Function} assert      - Checks if the loop should continue based on the current index.
+	 * @property {Function} initialize  - Initializes the loop index based on the provided argument.
+	 *
+	 * @example
+	 * const options = {
+	 *     step: {
+	 *         properties: {
+	 *             'Argument': { value: '5' }
+	 *         }
+	 *     },
+	 *     data: {}
+	 * };
+	 *
+	 * // Initialize the loop index
+	 * forLoopHandler.initialize(options);
+	 *
+	 * // Continue looping while assert returns true
+	 * while (forLoopHandler.assert(options)) {
+	 *     // Loop body logic here
+	 * }
+	 */
+	static forLoopHandler = {
+		/**
+		 * Determines whether the loop should continue by decrementing the index and checking its value.
+		 *
+		 * This method decrements the `index` stored in `options.data` and returns `true` if the new value
+		 * is greater than or equal to zero, indicating that the loop should continue. If the `index` becomes
+		 * negative, it returns `false`, signaling the end of the loop.
+		 *
+		 * @param {Object} options      - The options object containing loop data and step information.
+		 * @param {Object} options.data - An object to store loop-related data, including the `index`.
+		 *
+		 * @returns {boolean} `true` if the loop should continue; otherwise, `false`.
+		 *
+		 * @example
+		 * // Assuming options.data.index is initially 3
+		 * const shouldContinue = forLoopHandler.assert(options); // Decrements index to 2, returns true
+		 * console.log(options.data.index); // Outputs: 2
+		 */
+		assert: (options) => {
+			// Decrement the 'index' in options.data and check if it's still non-negative
+			return --options.data['index'] >= 0;
+		},
+
+		/**
+		 * Initializes the loop index based on the provided step argument.
+		 *
+		 * This method retrieves the 'Argument' property from the step's properties. If the argument is a valid
+		 * number, it sets the `index` in `options.data` to that number. Otherwise, it defaults the `index` to 0.
+		 *
+		 * @param {Object} options - The options object containing step information and data storage.
+		 * @param {Object} options.step - The step object containing properties used for initialization.
+		 * @param {Object} options.step.properties - An object holding various properties of the step.
+		 * @param {Object} options.step.properties.Argument - The 'Argument' property used to determine the loop count.
+		 * @param {any}    options.step.properties.Argument.value - The value of the 'Argument' property, expected to be a number or numeric string.
+		 * @param {Object} options.data - An object to store loop-related data, including the `index`.
+		 *
+		 * @returns {void}
+		 *
+		 * @example
+		 * const options = {
+		 *     step: {
+		 *         properties: {
+		 *             'Argument': { value: '5' }
+		 *         }
+		 *     },
+		 *     data: {}
+		 * };
+		 *
+		 * forLoopHandler.initialize(options);
+		 * console.log(options.data.index); // Outputs: 5
+		 */
+		initialize: (options) => {
+			// Retrieve the 'Argument' value from the step properties
+			const argument = options.step.properties['Argument'].value;
+
+			// Check if the argument is a valid integer using a regular expression
+			const isNumber = `${argument}`.match(/^\d+$/);
+
+			// Parse the argument to an integer if it's a number; otherwise, default to 0
+			const index = isNumber ? parseInt(argument, 10) : 0;
+
+			// Store the initialized index in options.data for loop tracking
+			options.data['index'] = index;
+		}
+	};
+
 	constructor(definition, handler) {
 		this.definition = definition;
 		this.speed = definition.properties["speed"];
@@ -210,6 +305,124 @@ class StateMachine {
 			throw new Error('Not running');
 		}
 		this.isInterrupted = true;
+	}
+
+	/**
+	 * Invokes a specific rule within a given session using automation rules.
+	 *
+	 * This asynchronous static method performs the following actions:
+	 * 1. Converts the provided `step` object into a rule using the `client.convertToRule` method.
+	 * 2. Assigns the generated rule to the first job of the first stage in the `automation` configuration.
+	 * 3. Sets the driver parameters based on the provided `session`. If `session` is undefined, existing driver parameters are retained.
+	 * 4. Invokes the automation process asynchronously using `client.invokeAutomation` and awaits the result.
+	 * 5. Extracts the new session identifier from the automation result for further processing.
+	 * 6. Returns an object containing the new session identifier and the full automation result.
+	 *
+	 * @param {Object}  client             - The client instance with `convertToRule` and `invokeAutomation` methods.
+	 * @param {Object}  options            - Configuration options for invoking the rule.
+	 * @param {string} [options.session]   - The current session identifier. If undefined, existing driver parameters are retained.
+	 * @param {Object}  options.step       - The step object to be invoked, containing necessary details for rule conversion.
+ 	 * @param {Object} [options.rule]      - The rule object to be invoked directly, bypassing the conversion from `step`.
+	 * @param {Object}  options.automation - The automation configuration object to be modified and used for invocation.
+	 *
+	 * @returns {Promise<{ session: string, automationResult: Object }>} 
+	 *          A promise that resolves to an object containing the new session identifier and the automation result after successfully invoking the rule.
+	 *
+	 * @throws {Error} Throws an error if the automation invocation fails or if the expected structure is not present in the result.
+	 *
+	 * @example
+	 * const client = {
+	 *     convertToRule: (step) => {
+	 *         // Logic to convert a step to a rule
+	 *         return { /* Converted rule object *\/ };
+	 *     },
+	 *     invokeAutomation: async (automationConfig) => {
+	 *         // Logic to invoke automation
+	 *         return {
+	 *             response1: {
+	 *                 sessions: {
+	 *                     'new-session-456': { /* Session details *\/ }
+	 *                 }
+	 *             }
+	 *         };
+	 *     }
+	 * };
+	 * 
+	 * const options = {
+	 *     session: 'session-123',
+	 *     step: {
+	 *         name: 'InitializeRule',
+	 *         type: 'setup',
+	 *         // Additional step properties...
+	 *     },
+	 *     automation: {
+	 *         stages: [
+	 *             {
+	 *                 jobs: [
+	 *                     {
+	 *                         rules: []
+	 *                     }
+	 *                 ]
+	 *             }
+	 *         ],
+	 *         driverParameters: {
+	 *             driver: 'ChromeDriver'
+	 *         }
+	 *     }
+	 * };
+	 * 
+	 * // Invoke the step within the session
+	 * YourClass.invokeStep(client, options)
+	 *     .then(({ session, automationResult }) => {
+	 *         console.log('New session:', session);
+	 *         console.log('Automation Result:', automationResult);
+	 *     })
+	 *     .catch(error => {
+	 *         console.error('Error invoking rule:', error);
+	 *     });
+	 */
+	static async invokeStep(client, options) {
+		// Convert the provided step object into a rule using the client's utility method.
+		const rule = options.rule ? options.rule : client.convertToRule(options.step);
+
+		// Create an array of rules, currently containing only the converted rule.
+		const rules = [rule];
+
+		// Assign the generated rules to the first job of the first stage in the automation configuration.
+		// Assumes that the automation configuration has at least one stage and one job.
+		options.automation.stages[0].jobs[0].rules = rules;
+
+		// Update the driver parameters based on the provided session.
+		// If `session` is undefined, retain the existing driver parameters.
+		// Otherwise, set the driver to reference the new session ID.
+		options.automation.driverParameters = options.session === undefined
+			? options.automation.driverParameters
+			: { driver: `Id(${options.session})` };
+
+		try {
+			// Invoke the automation process asynchronously and wait for the result.
+			const automationResult = await client.invokeAutomation(options.automation);
+
+			// Extract the first key from the automation result object.
+			// This key typically represents the main response or a specific response type.
+			const responseKey = Object.keys(automationResult)[0];
+
+			// Extract the first session ID from the sessions object within the response.
+			// This assumes that there is at least one session present in the response.
+			options.session = Object.keys(automationResult[responseKey].sessions)[0];
+
+			// Return an object containing the new session ID and the full automation result.
+			return {
+				session: options.session,
+				automationResult
+			};
+		} catch (error) {
+			// Handle any errors that occur during the automation invocation.
+			console.error('Automation invocation failed:', error);
+
+			// Rethrow the error after logging to allow further handling upstream.
+			throw error;
+		}
 	}
 }
 

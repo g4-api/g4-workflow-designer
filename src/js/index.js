@@ -82,6 +82,8 @@ async function startDefinition() {
 		}
 	};
 
+
+
 	if (_designer.isReadonly()) {
 		return;
 	}
@@ -101,11 +103,15 @@ async function startDefinition() {
 	const stateMachine = new StateMachine(definition, {
 		// Implement the `executeStep` method to execute a step asynchronously.
 		executeStep: async (step) => {
-			// Convert the step to a rule.
-			const rule = client.convertToRule(step);
+			// Prepare the options object for invoking the step.
+			const options = {
+				automation: automation,
+				session: session,
+				step: step
+			}
 
 			// Invoke the step asynchronously and wait for the result.
-			const response = await invokeStep(session, rule);
+			const response = await StateMachine.invokeStep(client, options);
 
 			// Extract the session from the response for further steps.
 			session = response.session;
@@ -121,8 +127,16 @@ async function startDefinition() {
 			// This is only required for the "If" step when running in a sequential workflow designer.
 			rule.pluginName = "Assert";
 
+			// Prepare the options object for invoking the step.
+			const options = {
+				automation: automation,
+				rule: rule,
+				session: session,
+				step: step
+			}
+
 			// Invoke the step asynchronously and wait for the result.
-			const response = await invokeStep(session, rule);
+			const response = await StateMachine.invokeStep(client, options);
 
 			// Find the plugin based on the step ID and the automation result.
 			const plugin = client.findPlugin(step.id, response.automationResult);
@@ -134,18 +148,14 @@ async function startDefinition() {
 			return client.assertPlugin(plugin);
 		},
 
-		// for loop    : convert the argument to a number and execute the loop that many times
 		// while loop  : assert the plugin response and execute the loop until the assertion fails or the loop limit is reached
 		// foreach loop: TBD
 		initLoopStep: (step, data) => {
-			const varName = step.properties['var'];
-			//createVariableIfNeeded(varName, data);
-			data[varName] = step.properties['val'];
+			StateMachine.forLoopHandler.initialize({ step, data });
 		},
 
 		canReplyLoopStep: (step, data) => {
-			const varName = step.properties['var'];
-			return --data[varName] >= 0;
+			return StateMachine.forLoopHandler.assert({ step, data });
 		},
 
 		beforeStepExecution: (step, data) => {
