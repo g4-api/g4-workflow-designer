@@ -98,7 +98,10 @@ async function startDefinition() {
 					StateMachine.forLoopHandler.initialize({ step, data });
 					break;
 				case "INVOKEWHILELOOP":
-					StateMachine.whileLoopHandler.initialize({ automation, step, data, client });
+					await StateMachine.whileLoopHandler.initialize({ automation, step, data, client });
+					break;
+				case "INVOKEFOREACHLOOP":
+					await StateMachine.foreachLoopHandler.initialize({ automation, step, data, client });
 					break;
 				default:
 					break;
@@ -113,6 +116,8 @@ async function startDefinition() {
 					return StateMachine.forLoopHandler.assert({ step, data });
 				case "INVOKEWHILELOOP":
 					return await StateMachine.whileLoopHandler.assert({ automation, step, data, client });
+				case "INVOKEFOREACHLOOP":
+					return StateMachine.foreachLoopHandler.assert({ step, data });
 				default:
 					return false;
 			}

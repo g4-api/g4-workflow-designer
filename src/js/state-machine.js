@@ -300,6 +300,91 @@ class StateMachine {
 		}
 	};
 
+
+
+	static foreachLoopHandler = {
+		/**
+		 * Determines whether the loop should continue by decrementing the index and checking its value.
+		 *
+		 * This method decrements the `index` stored in `options.data` and returns `true` if the new value
+		 * is greater than or equal to zero, indicating that the loop should continue. If the `index` becomes
+		 * negative, it returns `false`, signaling the end of the loop.
+		 *
+		 * @param {Object} options      - The options object containing loop data and step information.
+		 * @param {Object} options.data - An object to store loop-related data, including the `index`.
+		 *
+		 * @returns {boolean} `true` if the loop should continue; otherwise, `false`.
+		 *
+		 * @example
+		 * // Assuming options.data.index is initially 3
+		 * const shouldContinue = forLoopHandler.assert(options); // Decrements index to 2, returns true
+		 * console.log(options.data.index); // Outputs: 2
+		 */
+		assert: (options) => {
+			// Decrement the 'index' in options.data and check if it's still non-negative
+			return --options.data[options.step.id]['index'] >= 0;
+		},
+
+		/**
+		 * Initializes the while loop by performing an initial "Assert" step, without returning
+		 * the assertion. This sets up the conditions and updates the session for subsequent loop checks.
+		 *
+		 * 1. Converts the step to a rule using `client.convertToRule`.
+		 * 2. Overrides the plugin name to `"Assert"` (necessary when running an "If" step
+		 *    in a sequential workflow designer).
+		 * 3. Invokes the step via `StateMachine.invokeStep` and waits for the result.
+		 * 4. Locates the plugin in the automation result and asserts it, storing that result in `options.data`.
+		 *
+		 * @async
+		 * @function
+		 * @name initialize
+		 * @memberof whileLoopHandler
+		 * @param {Object} options            - The options object used for initializing loop conditions.
+		 * @param {Object} options.client     - A reference to the G4 client or automation service client.
+		 * @param {Object} options.step       - The current step object being processed.
+		 * @param {Object} options.automation - The overall automation object/context.
+		 * @param {Object} options.session    - The current session object for tracking state.
+		 * @param {Object} options.data       - A generic data object to store/retrieve arbitrary data between steps.
+		 *
+		 * @returns {Promise<void>} A promise that resolves when initialization is complete.
+		 */
+		initialize: async (options) => {
+			// Convert the step to a rule so it can be invoked in the automation engine.
+			const rule = options.client.convertToRule(options.step);
+
+			// Override the plugin name to "Assert" for the "If" step. This is necessary to ensure
+			// the correct plugin is invoked under the sequential automation specifically for "If" logic.
+			rule.pluginName = "Assert";
+			rule.argument = "{{$ --Condition:ElementsCount --Expected:0 --Operator:Greater}}";
+
+			// Prepare the options object for invoking the step.
+			const invokeOptions = {
+				automation: options.automation,
+				rule: rule,
+				session: options.session,
+				step: options.step
+			};
+
+			// Invoke the step asynchronously and wait for the result.
+			const response = await StateMachine.invokeStep(options.client, invokeOptions);
+
+			// Locate the plugin in the automation result using the step ID.
+			const plugin = options.client.findPlugin(options.step.id, response.automationResult);
+
+			// Extract the index from the response and store it in the data object.
+			const index = parseInt(plugin.extractions[0].entities[0].content['Actual']);
+
+			// Update the session with any new data from the response.
+			options.session = response.session;
+
+			// Initialize the loop index in options.data with the parsed value
+			options.data[options.step.id] = options.data[options.step.id] || {};
+
+			// Store the initialized index in options.data for loop tracking
+			options.data[options.step.id]['index'] = index
+		}
+	}
+
 	constructor(definition, handler) {
 		this.definition = definition;
 		this.speed = definition.properties["speed"];
@@ -347,7 +432,7 @@ class StateMachine {
 		await this.handler.initLoopStep(step, this.data);
 		const canStart = await this.handler.canReplyLoopStep(step, this.data);
 
-		if(!canStart) {
+		if (!canStart) {
 			return;
 		}
 
