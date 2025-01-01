@@ -135,7 +135,7 @@ class StateMachine {
 		 */
 		assert: (options) => {
 			// Decrement the 'index' in options.data and check if it's still non-negative
-			return --options.data['index'] > 0;
+			return --options.data[options.step.id]['index'] >= 0;
 		},
 
 		/**
@@ -176,8 +176,11 @@ class StateMachine {
 			// Parse the argument to an integer if it's a number; otherwise, default to 0
 			const index = isNumber ? parseInt(argument, 10) : 0;
 
+			// Initialize the loop index in options.data with the parsed value
+			options.data[options.step.id] = options.data[options.step.id] || {};
+
 			// Store the initialized index in options.data for loop tracking
-			options.data['index'] = index;
+			options.data[options.step.id]['index'] = index
 		}
 	};
 
@@ -342,6 +345,11 @@ class StateMachine {
 
 	async executeLoopStep(step) {
 		await this.handler.initLoopStep(step, this.data);
+		const canStart = await this.handler.canReplyLoopStep(step, this.data);
+
+		if(!canStart) {
+			return;
+		}
 
 		const program = {
 			sequence: step.sequence,
@@ -446,57 +454,6 @@ class StateMachine {
 	 *          A promise that resolves to an object containing the new session identifier and the automation result after successfully invoking the rule.
 	 *
 	 * @throws {Error} Throws an error if the automation invocation fails or if the expected structure is not present in the result.
-	 *
-	 * @example
-	 * const client = {
-	 *     convertToRule: (step) => {
-	 *         // Logic to convert a step to a rule
-	 *         return { /* Converted rule object *\/ };
-	 *     },
-	 *     invokeAutomation: async (automationConfig) => {
-	 *         // Logic to invoke automation
-	 *         return {
-	 *             response1: {
-	 *                 sessions: {
-	 *                     'new-session-456': { /* Session details *\/ }
-	 *                 }
-	 *             }
-	 *         };
-	 *     }
-	 * };
-	 * 
-	 * const options = {
-	 *     session: 'session-123',
-	 *     step: {
-	 *         name: 'InitializeRule',
-	 *         type: 'setup',
-	 *         // Additional step properties...
-	 *     },
-	 *     automation: {
-	 *         stages: [
-	 *             {
-	 *                 jobs: [
-	 *                     {
-	 *                         rules: []
-	 *                     }
-	 *                 ]
-	 *             }
-	 *         ],
-	 *         driverParameters: {
-	 *             driver: 'ChromeDriver'
-	 *         }
-	 *     }
-	 * };
-	 * 
-	 * // Invoke the step within the session
-	 * YourClass.invokeStep(client, options)
-	 *     .then(({ session, automationResult }) => {
-	 *         console.log('New session:', session);
-	 *         console.log('Automation Result:', automationResult);
-	 *     })
-	 *     .catch(error => {
-	 *         console.error('Error invoking rule:', error);
-	 *     });
 	 */
 	static async invokeStep(client, options) {
 		// Convert the provided step object into a rule using the client's utility method.
