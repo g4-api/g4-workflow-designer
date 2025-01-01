@@ -7,83 +7,6 @@ let _manifests = {};
 let _definition = {};
 
 async function startDefinition() {
-	/**
-	 * Invokes a specific rule within a given session using automation rules.
-	 *
-	 * This asynchronous function performs the following actions:
-	 * 1. Prepares the automation configuration by assigning the provided `rule` to the first job of the first stage.
-	 * 2. Sets the driver parameters based on the provided `session`. If `session` is undefined, existing driver parameters are retained.
-	 * 3. Invokes the automation process asynchronously using `client.invokeAutomation` and awaits the result.
-	 * 4. Extracts the new session identifier from the automation result for further processing.
-	 * 5. Returns an object containing the new session identifier and the full automation result.
-	 *
-	 * @param {string} [session] - The current session identifier. If undefined, existing driver parameters are retained.
-	 * @param {Object} rule        - The rule object to be invoked, containing necessary details for automation.
-	 *
-	 * @returns {Promise<{ session: string, automationResult: Object }>} 
-	 *          A promise that resolves to an object containing the new session identifier and the automation result after successfully invoking the rule.
-	 *
-	 * @throws {Error} Throws an error if the automation invocation fails or if the expected structure is not present in the result.
-	 *
-	 * @example
-	 * const currentSession = 'session-123';
-	 * const rule = {
-	 *     name: 'InitializeRule',
-	 *     type: 'setup',
-	 *     // Additional rule properties...
-	 * };
-	 *
-	 * invokeStep(currentSession, rule)
-	 *     .then(({ session, automationResult }) => {
-	 *         console.log('New session:', session);
-	 *         console.log('Automation Result:', automationResult);
-	 *     })
-	 *     .catch(error => {
-	 *         console.error('Error invoking rule:', error);
-	 *     });
-	 */
-	const invokeStep = async (session, rule) => {
-		// Create an array of rules, currently containing only the provided rule.
-		const rules = [rule];
-
-		// Assign the generated rules to the first job of the first stage in the automation configuration.
-		automation.stages[0].jobs[0].rules = rules;
-
-		// Update the driver parameters based on the provided session.
-		// If `session` is undefined, retain the existing driver parameters.
-		// Otherwise, set the driver to reference the new session ID.
-		automation.driverParameters = session === undefined
-			? automation.driverParameters
-			: { driver: `Id(${session})` };
-
-		try {
-			// Invoke the automation process asynchronously and wait for the result.
-			const automationResult = await client.invokeAutomation(automation);
-
-			// Extract the first key from the automation result object.
-			// This key typically represents the main response or a specific response type.
-			const responseKey = Object.keys(automationResult)[0];
-
-			// Extract the first session ID from the sessions object within the response.
-			// This assumes that there is at least one session present in the response.
-			session = Object.keys(automationResult[responseKey].sessions)[0];
-
-			// Return an object containing the new session ID and the full automation result.
-			return {
-				session,
-				automationResult
-			};
-		} catch (error) {
-			// Handle any errors that occur during the automation invocation.
-			console.error('Automation invocation failed:', error);
-
-			// Rethrow the error after logging to allow further handling upstream.
-			throw error;
-		}
-	};
-
-
-
 	if (_designer.isReadonly()) {
 		return;
 	}
@@ -150,7 +73,24 @@ async function startDefinition() {
 
 		// while loop  : assert the plugin response and execute the loop until the assertion fails or the loop limit is reached
 		// foreach loop: TBD
-		initLoopStep: (step, data) => {
+		initLoopStep: async (step, data) => {
+			// Prepare the options object for invoking the step.
+			const options = {
+				automation: automation,
+				session: session,
+				step: step
+			}
+
+			// Invoke the step asynchronously and wait for the result.
+			const response = await StateMachine.resolveMacros(client, options);
+
+			// Extract the rule from the response for further steps.
+			const rule = response[0];
+			
+			// Sync the step with the rule parsed rule.
+			client.syncStep(step, rule);
+
+			// Initialize the loop handler with the step and data.
 			StateMachine.forLoopHandler.initialize({ step, data });
 		},
 
@@ -281,7 +221,7 @@ function initializeStartDefinition(manifest) {
 	let initialStep = StateMachineSteps.newG4Step(manifest);
 
 	// Set a default value for the "Argument" property of the initial step.
-	initialStep.properties["Argument"]["value"] = "Foo Bar";
+	initialStep.properties["argument"]["value"] = "Foo Bar";
 
 	// Create a job container with the initial step inside.
 	// 'G4™ Default Job' is the name, 'job' is the type, an empty object represents additional properties, and `[initialStep]` is the list of steps.

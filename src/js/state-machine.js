@@ -135,7 +135,7 @@ class StateMachine {
 		 */
 		assert: (options) => {
 			// Decrement the 'index' in options.data and check if it's still non-negative
-			return --options.data['index'] >= 0;
+			return --options.data['index'] > 0;
 		},
 
 		/**
@@ -168,7 +168,7 @@ class StateMachine {
 		 */
 		initialize: (options) => {
 			// Retrieve the 'Argument' value from the step properties
-			const argument = options.step.properties['Argument'].value;
+			const argument = options.step.properties['argument'].resolvedValue;
 
 			// Check if the argument is a valid integer using a regular expression
 			const isNumber = `${argument}`.match(/^\d+$/);
@@ -322,7 +322,7 @@ class StateMachine {
 	 * @param {Object}  options            - Configuration options for invoking the rule.
 	 * @param {string} [options.session]   - The current session identifier. If undefined, existing driver parameters are retained.
 	 * @param {Object}  options.step       - The step object to be invoked, containing necessary details for rule conversion.
- 	 * @param {Object} [options.rule]      - The rule object to be invoked directly, bypassing the conversion from `step`.
+	   * @param {Object} [options.rule]      - The rule object to be invoked directly, bypassing the conversion from `step`.
 	 * @param {Object}  options.automation - The automation configuration object to be modified and used for invocation.
 	 *
 	 * @returns {Promise<{ session: string, automationResult: Object }>} 
@@ -424,6 +424,110 @@ class StateMachine {
 			throw error;
 		}
 	}
+
+	/**
+	 * Resolves macros within a given automation configuration by invoking the appropriate client method.
+	 *
+	 * This asynchronous static method performs the following actions:
+	 * 1. Converts the provided `step` object into a rule using the `client.convertToRule` method if `options.rule` is not provided.
+	 * 2. Assigns the generated or provided rule to the first job of the first stage in the `automation` configuration.
+	 * 3. Sets the driver parameters based on the provided `session`. If `session` is undefined, existing driver parameters are retained.
+	 * 4. Invokes the macro resolution process asynchronously using `client.resolveMacros` and awaits the result.
+	 * 5. Extracts the new session identifier from the automation result for further processing.
+	 * 6. Returns the resolved rules after successful invocation.
+	 *
+	 * @param {Object}  client             - The client instance with `convertToRule` and `resolveMacros` methods.
+	 * @param {Object}  options            - Configuration options for resolving macros.
+	 * @param {string} [options.session]   - The current session identifier. If undefined, existing driver parameters are retained.
+	 * @param {Object}  options.step       - The step object to be invoked, containing necessary details for rule conversion.
+	 * @param {Object} [options.rule]      - (Optional) The rule object to be invoked directly, bypassing the conversion from `step`.
+	 * @param {Object}  options.automation - The automation configuration object to be modified and used for invocation.
+	 *
+	 * @returns {Promise<Object>} 
+	 *          A promise that resolves to the resolved rules after successfully invoking the macros.
+	 *
+	 * @throws {Error} Throws an error if the macro resolution invocation fails or if the expected structure is not present in the result.
+	 *
+	 * @example
+	 * const client = {
+	 *     convertToRule: (step) => {
+	 *         // Logic to convert a step to a rule
+	 *         return { /* Converted rule object */ /* };
+*     },
+*     resolveMacros: async (automationConfig) => {
+*         // Logic to resolve macros
+*         return {
+*             response1: {
+*                 sessions: {
+*                     'new-session-456': { /* Session details */ /* }
+		  *                 }
+		  *             }
+		  *         };
+		  *     }
+		  * };
+		  * 
+		  * const options = {
+		  *     session: 'session-123',
+		  *     step: {
+		  *         name: 'InitializeRule',
+		  *         type: 'setup',
+		  *         // Additional step properties...
+		  *     },
+		  *     automation: {
+		  *         stages: [
+		  *             {
+		  *                 jobs: [
+		  *                     {
+		  *                         rules: []
+		  *                     }
+		  *                 ]
+		  *             }
+		  *         ],
+		  *         driverParameters: {
+		  *             driver: 'ChromeDriver'
+		  *         }
+		  *     }
+		  * };
+		  * 
+		  * // Invoke the macros within the session
+		  * YourClass.resolveMacros(client, options)
+		  *     .then((resolvedRules) => {
+		  *         console.log('Resolved Rules:', resolvedRules);
+		  *     })
+		  *     .catch(error => {
+		  *         console.error('Error resolving macros:', error);
+		  *     });
+		  */
+	static async resolveMacros(client, options) {
+		// Determine whether to use the provided rule or convert the step into a rule using the client's method.
+		const rule = options.rule ? options.rule : client.convertToRule(options.step);
+
+		// Create an array of rules, currently containing only the converted or provided rule.
+		const rules = [rule];
+
+		// Assign the generated rules to the first job of the first stage in the automation configuration.
+		// This assumes that the automation configuration has at least one stage and one job.
+		options.automation.stages[0].jobs[0].rules = rules;
+
+		// Update the driver parameters based on the provided session.
+		// If `session` is undefined, retain the existing driver parameters.
+		// Otherwise, set the driver to reference the new session ID.
+		options.automation.driverParameters = options.session === undefined
+			? options.automation.driverParameters
+			: { driver: `Id(${options.session})` };
+
+		try {
+			// Invoke the macro resolution process asynchronously and wait for the result.
+			// This method should return the resolved rules after successful invocation.
+			return await client.resolveMacros(options.automation);
+		} catch (error) {
+			// Handle any errors that occur during the macro resolution invocation.
+			console.error('Resolution invocation failed:', error);
+
+			// Rethrow the error after logging to allow further handling upstream.
+			throw error;
+		}
+	};
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -564,14 +668,16 @@ class StateMachineSteps {
 		// Process each property in manifest.properties
 		if (manifest.properties) {
 			for (const property of manifest.properties) {
-				properties[property.name] = newBridgeObject(property);
+				const name = convertToCamelCase(property.name);
+				properties[name] = newBridgeObject(property);
 			}
 		}
 
 		// Process each parameter in manifest.parameters
 		if (manifest.parameters) {
 			for (const parameter of manifest.parameters) {
-				parameters[parameter.name] = newBridgeObject(parameter);
+				const name = convertToCamelCase(parameter.name);
+				parameters[name] = newBridgeObject(parameter);
 			}
 		}
 
@@ -642,6 +748,9 @@ class G4Client {
 
 		// The URL endpoint to initialize an automation sequence.
 		this.initializeUri = `${this.baseUrl}/automation/init`;
+
+		// The URL endpoint to resolve macros in an automation sequence.
+		this.macrosUrl = `${this.baseUrl}/automation/resolve`;
 
 		// The URL endpoint to fetch plugin manifests.
 		this.manifestsUrl = `${this.baseUrl}/integration/manifests`;
@@ -893,6 +1002,175 @@ class G4Client {
 
 		// Return the fully constructed rule object.
 		return rule;
+	}
+
+	// TODO: refactor to iterate every parameter and property value and replace them in the original step
+	syncStep(step, rule) {
+		/**
+		 * Parses the argument string (e.g. "{{$ --param1:value1 --param2 --param3:subKey=value3}}")
+		 * and returns a structured object describing each parameter with its potential type and values.
+		 *
+		 * @param {string} arg - The argument string from the rule (e.g. "{{$ --param1:value1 --param2}}").
+		 * @returns {Object} An object of parameterName → { type, values }, where `values` holds
+		 *                   either booleans, arrays, dictionaries, or single values.
+		 *
+		 * Example return shape:
+		 * {
+		 *   param1: { type: 'STRING', values: ['value1'] },
+		 *   param2: { type: 'SWITCH', values: [true] },
+		 *   param3: { type: 'ARRAY', values: ['val1','val2'] },
+		 *   config: { type: 'DICTIONARY', values: [{subKey: 'value'}, {anotherKey: 'anotherVal'}] }
+		 * }
+		 */
+		function formatArgumentString(arg = "") {
+			// If there's no argument or it doesn't have the "{{$" prefix, return empty.
+			if (!arg.includes("{{$")) {
+				return {};
+			}
+
+			// Extract the content between "{{$ " and "}}" (remove the templating braces).
+			// e.g. "{{$ --param1:value1 --param2}}" -> "--param1:value1 --param2"
+			const trimmed = arg.replace("{{$", "").replace("}}", "").trim();
+
+			// Split by space to get each token like ["--param1:value1", "--param2", "--param3:subKey=value3", ...].
+			const tokens = trimmed.split(/\s+/);
+
+			// Object that will accumulate data in intermediate form:
+			// e.g. {
+			//   param1: [ { raw: '--param1:value1', key: 'param1', subKeyValue: 'value1' } ],
+			//   param2: [ { raw: '--param2', key: 'param2' } ],
+			//   param3: [ { raw: '--param3:subKey=value3', key: 'param3', subKey: 'subKey', subValue: 'value3' } ],
+			// }
+			const paramMap = {};
+
+			for (const token of tokens) {
+				if (!token.startsWith("--")) {
+					continue; // skip non-parameter tokens (unlikely but safe).
+				}
+
+				// Remove the leading "--"
+				const withoutDashes = token.slice(2);
+
+				// Patterns to detect:
+				// 1) "param" (boolean switch)        => no colons
+				// 2) "param:value" (single/array)    => one colon
+				// 3) "param:subKey=value" (dict)     => one colon + '='
+				//
+				// Let's check if there's a colon.
+				const colonIndex = withoutDashes.indexOf(":");
+				if (colonIndex === -1) {
+					// This is a boolean/switch param, e.g. "--param"
+					const paramName = withoutDashes;
+					paramMap[paramName] = paramMap[paramName] || [];
+					paramMap[paramName].push({ raw: token, key: paramName, isSwitch: true });
+					continue;
+				}
+
+				// If there's a colon, separate the part before the colon from after it.
+				const paramName = withoutDashes.slice(0, colonIndex);
+				const remainder = withoutDashes.slice(colonIndex + 1);
+
+				// For dictionary-like tokens, we expect "subKey=value"
+				// Check if there's an '=' in remainder
+				const eqIndex = remainder.indexOf("=");
+				if (eqIndex === -1) {
+					// No '=', so it's a single or array param, e.g. "--param:value"
+					const paramValue = remainder;
+					paramMap[paramName] = paramMap[paramName] || [];
+					paramMap[paramName].push({
+						raw: token,
+						key: paramName,
+						value: paramValue
+					});
+				} else {
+					// We have a subKey=value scenario, e.g. "--param:subKey=value"
+					const subKey = remainder.slice(0, eqIndex);
+					const subValue = remainder.slice(eqIndex + 1);
+					paramMap[paramName] = paramMap[paramName] || [];
+					paramMap[paramName].push({
+						raw: token,
+						key: paramName,
+						subKey,
+						subValue
+					});
+				}
+			}
+
+			// Now we convert `paramMap` into a friendlier shape with inferred parameter types.
+			const structuredParams = {};
+
+			for (const [paramName, entries] of Object.entries(paramMap)) {
+				// If any entry has "isSwitch" = true, we call it a SWITCH param.
+				// (Though it’s possible an advanced user might do something crazy mixing forms, we’ll assume consistency.)
+				const isSwitchParam = entries.some(e => e.isSwitch);
+				if (isSwitchParam) {
+					structuredParams[paramName] = {
+						type: "SWITCH",
+						// We can store "true" or "on" or something. 
+						// Original code used isValue to detect if switch is present. So let's store "true".
+						value: "true"
+					};
+					continue;
+				}
+
+				// Check for dictionary style: if all have subKey & subValue, it's dictionary
+				const isDictionary = entries.every(e => typeof e.subKey !== "undefined");
+				if (isDictionary) {
+					// e.g. paramName: [ { subKey: 'host', subValue: 'localhost' }, { subKey: 'port', subValue: '8080' } ]
+					const dictObj = {};
+					for (const dictEntry of entries) {
+						dictObj[dictEntry.subKey] = dictEntry.subValue;
+					}
+					structuredParams[paramName] = {
+						// The original function used "DICTIONARY", "KEY/VALUE", or "OBJECT" interchangeably.
+						// We'll pick "DICTIONARY" for consistency.
+						type: "DICTIONARY",
+						value: dictObj
+					};
+					continue;
+				}
+
+				// Otherwise, check for multiple single values → array
+				// If there's more than one entry, or the developer specifically repeated them, treat as array.
+				if (entries.length > 1) {
+					// e.g. paramName: [ { value: 'val1' }, { value: 'val2' } ]
+					structuredParams[paramName] = {
+						type: "ARRAY",
+						value: entries.map(e => e.value)
+					};
+					continue;
+				}
+
+				// If there's exactly one entry with a "value", it's a single-value (string).
+				structuredParams[paramName] = {
+					type: "STRING",
+					value: entries[0].value
+				};
+			}
+
+			return structuredParams;
+		}
+
+		// Convert each key in rule to a property, skipping known fields.
+		const includeKeys = ["argument", "locator", "locatorType", "onAttribute", "onElement", "regularExpression"];
+		for (const key in rule) {
+			if (!includeKeys.includes(key) || !(key in step.properties)) {
+				continue;
+			}
+			// The remaining keys are assumed to be "property keys" in camelCase form.
+			step.properties[key]["resolvedValue"] = rule[key];
+		}
+
+		// Parse the argument string back into parameters, if present.
+		if (rule.argument) {
+			const parsedParams = formatArgumentString(rule.argument);
+			for (const [paramName, paramInfo] of Object.entries(parsedParams)) {
+				step.parameters[paramName]["resolvedValue"] = paramInfo.value;
+			}
+		}
+
+		// Return the reconstructed step object.
+		return step;
 	}
 
 	/**
@@ -1163,9 +1441,12 @@ class G4Client {
 	 *
 	 * @async
 	 * @function invokeAutomation
-	 * @param {Object} definition - The automation definition object to be sent in the POST request body.
-	 * @returns {Promise<Object>} - A promise that resolves to the parsed JSON response data from the server.
-	 * @throws {Error} - Throws an error if the network response is not ok or if the fetch operation fails.
+	 * 
+	 * @param    {Object} definition - The automation definition object to be sent in the POST request body.
+	 * 
+	 * @returns  {Promise<Object>} - A promise that resolves to the parsed JSON response data from the server.
+	 * 
+	 * @throws   {Error} - Throws an error if the network response is not ok or if the fetch operation fails.
 	 */
 	async invokeAutomation(definition) {
 		try {
@@ -1199,6 +1480,53 @@ class G4Client {
 		}
 	}
 
+	/**
+	 * Resolves all macros for the G4 Automation Sequence by sending a POST request with the provided definition.
+	 *
+	 * This asynchronous function sends a JSON payload to a predefined automation URL using the Fetch API.
+	 * It handles the response by parsing the returned JSON data and managing errors that may occur during the request.
+	 *
+	 * @async
+	 * @function invokeAutomation
+	 * 
+	 * @param    {Object} definition - The automation definition object to be sent in the POST request body.
+	 * 
+	 * @returns  {Promise<Object>} - A promise that resolves to the parsed JSON response data from the server.
+	 * 
+	 * @throws   {Error} - Throws an error if the network response is not ok or if the fetch operation fails.
+	 */
+	async resolveMacros(definition) {
+		try {
+			// Resolve the G4 automation sequence by sending a POST request with the automation definition.
+			const response = await fetch(this.macrosUrl, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify(definition)
+			});
+
+			// Check if the response status indicates a successful request (HTTP status code 200-299).
+			// If the response is not ok, throw an error with the status text for debugging purposes.
+			if (!response.ok) {
+				throw new Error(`Network response was not ok: ${response.statusText}`);
+			}
+
+			// Parse the JSON data from the successful response.
+			const data = await response.json();
+
+			// Return the parsed data for further processing by the caller.
+			return data;
+		} catch (error) {
+			// Log the error to the console for debugging and monitoring purposes.
+			console.error('Failed to resolve G4 automation:', error);
+
+			// Rethrow the original error to ensure that the caller can handle it appropriately.
+			// Using 'throw error' preserves the original error stack and message.
+			throw error;
+		}
+	}
+
 	newAutomation(authentication, driverParameters) {
 		driverParameters = driverParameters || {
 			"driver": "MicrosoftEdgeDriver",
@@ -1214,7 +1542,8 @@ class G4Client {
 			}
 		};
 		authentication = authentication || {
-			username: "pyhBifB6z1YxJv53xLip"
+			username: "pyhBifB6z1YxJv53xLip",
+			password: ""
 		};
 
 		return {
