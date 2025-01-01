@@ -77,6 +77,7 @@ async function startDefinition() {
 			// Prepare the options object for invoking the step.
 			const options = {
 				automation: automation,
+				client: client,
 				session: session,
 				step: step
 			}
@@ -91,11 +92,30 @@ async function startDefinition() {
 			client.syncStep(step, rule);
 
 			// Initialize the loop handler with the step and data.
-			StateMachine.forLoopHandler.initialize({ step, data });
+			const pluginName = step.pluginName.toLocaleUpperCase();
+			switch (pluginName) {
+				case "INVOKEFORLOOP":
+					StateMachine.forLoopHandler.initialize({ step, data });
+					break;
+				case "INVOKEWHILELOOP":
+					StateMachine.whileLoopHandler.initialize({ automation, step, data, client });
+					break;
+				default:
+					break;
+			}
 		},
 
-		canReplyLoopStep: (step, data) => {
-			return StateMachine.forLoopHandler.assert({ step, data });
+		canReplyLoopStep: async (step, data) => {
+			// Initialize the loop handler with the step and data.
+			const pluginName = step.pluginName.toLocaleUpperCase();
+			switch (pluginName) {
+				case "INVOKEFORLOOP":
+					return StateMachine.forLoopHandler.assert({ step, data });
+				case "INVOKEWHILELOOP":
+					return await StateMachine.whileLoopHandler.assert({ automation, step, data, client });
+				default:
+					return false;
+			}
 		},
 
 		beforeStepExecution: (step, data) => {

@@ -181,6 +181,122 @@ class StateMachine {
 		}
 	};
 
+	/**
+	 * Provides handler methods (`assert` and `initialize`) for controlling while-loop behavior
+	 * in a sequential workflow, using plugin assertions to determine looping conditions.
+	 */
+	static whileLoopHandler = {
+		/**
+		 * Asserts a condition to determine if the loop should continue.
+		 *
+		 * 1. Converts the step to a rule using `client.convertToRule`.
+		 * 2. Overrides the plugin name to `"Assert"` (necessary when running an "If" step
+		 *    in a sequential workflow designer).
+		 * 3. Invokes the step via `StateMachine.invokeStep` and waits for the result.
+		 * 4. Finds the relevant plugin and asserts it to decide the loop's continuation.
+		 * 5. Returns the assertion result (true/false).
+		 *
+		 * @async
+		 * @function
+		 * @name assert
+		 * @memberof whileLoopHandler
+		 * @param {Object} options            - The options object used for asserting loop conditions.
+		 * @param {Object} options.client     - A reference to the G4 client or automation service client.
+		 * @param {Object} options.step       - The current step object being processed.
+		 * @param {Object} options.automation - The overall automation object/context.
+		 * @param {Object} options.session    - The current session object for tracking state.
+		 * @param {Object} options.data       - A generic data object to store/retrieve arbitrary data between steps.
+		 *
+		 * @returns {Promise<boolean>} A promise that resolves to a boolean indicating if the loop should continue.
+		 */
+		assert: async (options) => {
+			// Convert the step to a rule so it can be invoked in the automation engine.
+			const rule = options.client.convertToRule(options.step);
+
+			// Override the plugin name to "Assert" for the "If" step. This is necessary to ensure
+			// the correct plugin is invoked under the sequential automation specifically for "If" logic.
+			rule.pluginName = "Assert";
+
+			// Prepare the options object for invoking the step.
+			const invokeOptions = {
+				automation: options.automation,
+				rule: rule,
+				session: options.session,
+				step: options.step
+			};
+
+			// Invoke the step asynchronously and wait for the result.
+			const response = await StateMachine.invokeStep(options.client, invokeOptions);
+
+			// Locate the plugin in the automation result using the step ID.
+			const plugin = options.client.findPlugin(options.step.id, response.automationResult);
+
+			// Assert the plugin to determine if the loop should continue.
+			const assertion = options.client.assertPlugin(plugin);
+
+			// Update the session with any new data from the response.
+			options.session = response.session;
+
+			// Store the assertion result for subsequent steps.
+			options.data['assertion'] = assertion;
+
+			// Return the assertion result to decide loop continuation (true/false).
+			return assertion;
+		},
+
+		/**
+		 * Initializes the while loop by performing an initial "Assert" step, without returning
+		 * the assertion. This sets up the conditions and updates the session for subsequent loop checks.
+		 *
+		 * 1. Converts the step to a rule using `client.convertToRule`.
+		 * 2. Overrides the plugin name to `"Assert"` (necessary when running an "If" step
+		 *    in a sequential workflow designer).
+		 * 3. Invokes the step via `StateMachine.invokeStep` and waits for the result.
+		 * 4. Locates the plugin in the automation result and asserts it, storing that result in `options.data`.
+		 *
+		 * @async
+		 * @function
+		 * @name initialize
+		 * @memberof whileLoopHandler
+		 * @param {Object} options            - The options object used for initializing loop conditions.
+		 * @param {Object} options.client     - A reference to the G4 client or automation service client.
+		 * @param {Object} options.step       - The current step object being processed.
+		 * @param {Object} options.automation - The overall automation object/context.
+		 * @param {Object} options.session    - The current session object for tracking state.
+		 * @param {Object} options.data       - A generic data object to store/retrieve arbitrary data between steps.
+		 *
+		 * @returns {Promise<void>} A promise that resolves when initialization is complete.
+		 */
+		initialize: async (options) => {
+			// Convert the step to a rule so it can be invoked in the automation engine.
+			const rule = options.client.convertToRule(options.step);
+
+			// Override the plugin name to "Assert" for the "If" step. This is necessary to ensure
+			// the correct plugin is invoked under the sequential automation specifically for "If" logic.
+			rule.pluginName = "Assert";
+
+			// Prepare the options object for invoking the step.
+			const invokeOptions = {
+				automation: options.automation,
+				rule: rule,
+				session: options.session,
+				step: options.step
+			};
+
+			// Invoke the step asynchronously and wait for the result.
+			const response = await StateMachine.invokeStep(options.client, invokeOptions);
+
+			// Locate the plugin in the automation result using the step ID.
+			const plugin = options.client.findPlugin(options.step.id, response.automationResult);
+
+			// Update the session with any new data from the response.
+			options.session = response.session;
+
+			// Assert the plugin to determine if the loop should continue. The result is stored, but not returned here.
+			options.data['assertion'] = options.client.assertPlugin(plugin);
+		}
+	};
+
 	constructor(definition, handler) {
 		this.definition = definition;
 		this.speed = definition.properties["speed"];
@@ -224,14 +340,15 @@ class StateMachine {
 		});
 	}
 
-	executeLoopStep(step) {
-		this.handler.initLoopStep(step, this.data);
+	async executeLoopStep(step) {
+		await this.handler.initLoopStep(step, this.data);
 
 		const program = {
 			sequence: step.sequence,
 			index: 0,
-			unwind: () => {
-				if (this.handler.canReplyLoopStep(step, this.data)) {
+			unwind: async () => {
+				const canContinue = await this.handler.canReplyLoopStep(step, this.data);
+				if (canContinue) {
 					program.index = 0;
 				} else {
 					this.unwindStack();
@@ -252,7 +369,7 @@ class StateMachine {
 
 		if (program.sequence.length === program.index) {
 			if (depth > 0) {
-				program.unwind();
+				await program.unwind();
 				this.execute();
 			} else {
 				this.isRunning = false;
@@ -278,7 +395,7 @@ class StateMachine {
 				this.executeIfStep(step);
 				break;
 			case 'loop':
-				this.executeLoopStep(step);
+				await this.executeLoopStep(step);
 				break;
 			default:
 				await this.executeStep(step);
@@ -447,57 +564,7 @@ class StateMachine {
 	 *          A promise that resolves to the resolved rules after successfully invoking the macros.
 	 *
 	 * @throws {Error} Throws an error if the macro resolution invocation fails or if the expected structure is not present in the result.
-	 *
-	 * @example
-	 * const client = {
-	 *     convertToRule: (step) => {
-	 *         // Logic to convert a step to a rule
-	 *         return { /* Converted rule object */ /* };
-*     },
-*     resolveMacros: async (automationConfig) => {
-*         // Logic to resolve macros
-*         return {
-*             response1: {
-*                 sessions: {
-*                     'new-session-456': { /* Session details */ /* }
-		  *                 }
-		  *             }
-		  *         };
-		  *     }
-		  * };
-		  * 
-		  * const options = {
-		  *     session: 'session-123',
-		  *     step: {
-		  *         name: 'InitializeRule',
-		  *         type: 'setup',
-		  *         // Additional step properties...
-		  *     },
-		  *     automation: {
-		  *         stages: [
-		  *             {
-		  *                 jobs: [
-		  *                     {
-		  *                         rules: []
-		  *                     }
-		  *                 ]
-		  *             }
-		  *         ],
-		  *         driverParameters: {
-		  *             driver: 'ChromeDriver'
-		  *         }
-		  *     }
-		  * };
-		  * 
-		  * // Invoke the macros within the session
-		  * YourClass.resolveMacros(client, options)
-		  *     .then((resolvedRules) => {
-		  *         console.log('Resolved Rules:', resolvedRules);
-		  *     })
-		  *     .catch(error => {
-		  *         console.error('Error resolving macros:', error);
-		  *     });
-		  */
+	 */
 	static async resolveMacros(client, options) {
 		// Determine whether to use the provided rule or convert the step into a rule using the client's method.
 		const rule = options.rule ? options.rule : client.convertToRule(options.step);
