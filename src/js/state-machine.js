@@ -168,7 +168,7 @@ class StateMachine {
 		 */
 		initialize: (options) => {
 			// Retrieve the 'Argument' value from the step properties
-			const argument = options.step.properties['argument'].resolvedValue;
+			const argument = options.step.properties['argument'].value;
 
 			// Check if the argument is a valid integer using a regular expression
 			const isNumber = `${argument}`.match(/^\d+$/);
@@ -523,31 +523,81 @@ class StateMachine {
 		});
 	}
 
-	async executeLoopStep(step) {
+	/**
+	 * Executes the given loop step by initializing the loop state and pushing 
+	 * a `program` object onto the call stack. This function handles both 
+	 * "INVOKEWHILELOOP" and "INVOKEFOREACHLOOP" scenarios.
+	 *
+	 * @async
+	 * @function invokeLoopStep
+	 * @param {Object} step            - The current step object to be executed.
+	 * @param {string} step.pluginName - The name of the plugin (e.g. "INVOKEWHILELOOP", "INVOKEFOREACHLOOP").
+	 * @param {Array}  step.sequence   - The sequence of steps that belong to this loop.
+	 * @returns {Promise<void>}
+	 */
+	async invokeLoopStep(step) {
+		// Initialize loop step data (e.g., set up variables, load resources, etc.)
 		await this.handler.initLoopStep(step, this.data);
 
+		// If this is a WHILE loop, determine if the loop is allowed to start
 		if (step.pluginName.toLocaleUpperCase() === "INVOKEWHILELOOP") {
+			// Check if the loop can start based on the current state
 			const canStart = await this.handler.canReplyLoopStep(step, this.data);
+			
+			// If the condition fails, do not proceed further
 			if (!canStart) {
 				return;
 			}
 		}
 
+		// If this is a FOREACH loop, perform initial loop setup
+		if (step.pluginName.toLocaleUpperCase() === "INVOKEFOREACHLOOP") {
+			// Calls a handler function to set or update any necessary properties for the loop
+			StateMachine.foreachLoopHandler.set({ step, data: this.data });
+
+			// Decrement the loop's current index, allowing the first sequence to be invoked properly
+			--this.data[step.id]["index"];
+		}
+
+		/**
+		 * The `program` object encapsulates the sequence of steps for this loop
+		 * and provides an `unwind` method to decide whether to continue or 
+		 * exit the loop.
+		 */
 		const program = {
+			// The sequence of steps that belong to this loop
 			sequence: step.sequence,
+
+			// Tracks the current position in the sequence of steps
 			index: 0,
+
+			/**
+			 * If the loop condition is still met, reset the index to replay the sequence.
+			 * Otherwise, unwind the call stack to exit the loop.
+			 *
+			 * @async
+			 * @function
+			 * @returns {Promise<void>}
+			 */
 			unwind: async () => {
+				// If we are in a FOREACH loop, re-calculate or re-set any loop-specific data
 				if (step.pluginName.toLocaleUpperCase() === "INVOKEFOREACHLOOP") {
 					StateMachine.foreachLoopHandler.set({ step, data: this.data });
 				}
+
+				// Check if the loop can continue
 				const canContinue = await this.handler.canReplyLoopStep(step, this.data);
 				if (canContinue) {
+					// Loop condition is still true; reset index to replay steps
 					program.index = 0;
 				} else {
+					// Loop condition is false; unwind the stack to exit the loop
 					this.unwindStack();
 				}
 			}
 		};
+
+		// Push the `program` onto the call stack so it can be executed
 		this.callstack.push(program);
 	}
 
@@ -588,7 +638,7 @@ class StateMachine {
 				this.executeIfStep(step);
 				break;
 			case 'loop':
-				await this.executeLoopStep(step);
+				await this.invokeLoopStep(step);
 				break;
 			default:
 				await this.executeStep(step);
