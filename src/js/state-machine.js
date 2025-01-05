@@ -339,7 +339,7 @@ class StateMachine {
 				// Check if the step has an 'onElement' property
 				if (step.properties["onElement"]) {
 					// Restore the original 'onElement' value
-					step.properties["onElement"].value = step.properties["originalOnElement"];
+					step.properties["onElement"].value = step.context["originalOnElement"];
 				}
 			}
 
@@ -374,7 +374,8 @@ class StateMachine {
 			// Store the original locator and onElement values for each step in the sequence
 			for (const index in options.step.sequence) {
 				const step = options.step.sequence[index];
-				step.properties["originalOnElement"] = step.properties?.onElement?.value || "";
+				step.context = step.context || {};
+				step.context["originalOnElement"] = step.properties?.onElement?.value || "";
 			}
 
 			// Convert the step to a rule so it can be invoked in the automation engine.
@@ -447,7 +448,7 @@ class StateMachine {
 			// Loop through each step in the sequence and update the locator as necessary
 			for (const step of options.step.sequence) {
 				// Retrieve the original `onElement` value. If not provided, default to an empty string
-				let onElement = step.properties?.originalOnElement || "";
+				let onElement = step.context?.originalOnElement || "";
 
 				// Determine the locator type (e.g., 'XPATH' or 'CSSSELECTOR'); default to 'XPATH'
 				const locator = step.properties?.locator?.value?.toLocaleUpperCase() || "XPATH";
@@ -531,33 +532,6 @@ class StateMachine {
 				return;
 			}
 		}
-
-		// const f = (step, data) => {
-		// 	if (step.pluginName.toLocaleUpperCase() === "INVOKEFOREACHLOOP") {
-		// 		const index = data[step.id]['total'] - data[step.id]['index'];
-		// 		const baseLocator = step.properties?.onElement?.value;
-
-		// 		for (const s of step.sequence) {
-		// 			let onElement = s.properties?.originalOnElement || "";
-		// 			const locator = s.properties?.locator?.value?.toLocaleUpperCase() || "XPATH";
-
-		// 			const isSelf = onElement?.startsWith(".");
-		// 			const isXpath = locator === "XPATH";
-		// 			const isCss = locator === "CSSSELECTOR";
-
-		// 			if (isSelf && isXpath) {
-		// 				onElement = `(${baseLocator})[${index + 1}]`;
-		// 			}
-		// 			if (isSelf && isCss) {
-		// 				onElement = `${baseLocator}:nth-of-type(${index + 1})`;
-		// 			}
-
-		// 			if (onElement) {
-		// 				s.properties.onElement.value = onElement;
-		// 			}
-		// 		}
-		// 	}
-		// }
 
 		const program = {
 			sequence: step.sequence,
