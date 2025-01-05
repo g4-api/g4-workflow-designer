@@ -871,9 +871,9 @@ function stepEditorProvider(step, editorContext, _definition) {
 		}
 
 		// Determine the nature of the parameter to decide which input field to create.
-		const isListField = _cacheKeys.includes(parameter.type.toUpperCase());
+		const isListField = _cacheKeys.includes(parameter.type?.toUpperCase());
 		const isOptionsField = parameter.optionsList && parameter.optionsList.length > 0;
-		const isArray = parameter.type.toUpperCase() === 'ARRAY';
+		const isArray = parameter.type?.toUpperCase() === 'ARRAY';
 		const isSwitch = ['SWITCH', 'BOOLEAN', 'BOOL'].includes(parameter.type.toUpperCase());
 		const isKeyValue = ['KEY/VALUE', 'KEYVALUE', 'DICTIONARY'].includes(parameter.type.toUpperCase());
 
@@ -1012,6 +1012,7 @@ function stepEditorProvider(step, editorContext, _definition) {
 	// Create the main container element for the step editor.
 	const stepEditorContainer = document.createElement('div');
 	stepEditorContainer.setAttribute("g4-role", "step-editor");
+
 	// Set the tooltip for the container to provide a description of the step.
 	stepEditorContainer.title = step.description;
 
@@ -1053,7 +1054,8 @@ function stepEditorProvider(step, editorContext, _definition) {
 	/**
 	 * Sort the properties of the step alphabetically for consistent display.
 	 */
-	const sortedProperties = Object.keys(step.properties).sort((a, b) => a.localeCompare(b));
+	let sortedProperties = Object.keys(step.properties).sort((a, b) => a.localeCompare(b));
+
 	// Determine if the step has any parameters defined.
 	const hasParameters = Object.keys(step.parameters).length > 0;
 
@@ -1080,6 +1082,9 @@ function stepEditorProvider(step, editorContext, _definition) {
 
 		// Determine if the current property should be skipped.
 		const skip = (hasParameters && key.toUpperCase() === 'ARGUMENT') || key.toUpperCase() === 'RULES';
+
+		// Update the sorted properties list to exclude the skipped property.
+		sortedProperties = skip ? sortedProperties.filter((property) => property !== key) : sortedProperties;
 
 		// Skip the property if it meets the conditions above.
 		if (!skip) {

@@ -135,7 +135,7 @@ class StateMachine {
 		 */
 		assert: (options) => {
 			// Decrement the 'index' in options.data and check if it's still non-negative
-			return --options.data[options.step.id]['index'] >= 0;
+			return --options.data[options.step.id]['index'] > 0;
 		},
 
 		/**
@@ -300,8 +300,10 @@ class StateMachine {
 		}
 	};
 
-
-
+	/**
+	 * Provides handler methods (`assert`, `initialize` and `set`) for controlling for-each-loop behavior
+	 * in a sequential workflow, using plugin assertions to determine looping conditions.
+	 */
 	static foreachLoopHandler = {
 		/**
 		 * Determines whether the loop should continue by decrementing the index and checking its value.
@@ -322,7 +324,27 @@ class StateMachine {
 		 */
 		assert: (options) => {
 			// Decrement the 'index' in options.data and check if it's still non-negative
-			return --options.data[options.step.id]['index'] >= 0;
+			const canContinue = --options.data[options.step.id]['index'] >= 0;
+
+			// If the index is non-negative, the loop should continue
+			if (canContinue) {
+				return true;
+			}
+
+			// If the loop should not continue, reset the 'onElement' property for each step in the sequence
+			for (const index in options.step.sequence) {
+				// Retrieve the current step in the sequence
+				const step = options.step.sequence[index];
+
+				// Check if the step has an 'onElement' property
+				if (step.properties["onElement"]) {
+					// Restore the original 'onElement' value
+					step.properties["onElement"].value = step.properties["originalOnElement"];
+				}
+			}
+
+			// Return false to indicate the loop should not continue
+			return false;
 		},
 
 		/**
@@ -349,6 +371,12 @@ class StateMachine {
 		 * @returns {Promise<void>} A promise that resolves when initialization is complete.
 		 */
 		initialize: async (options) => {
+			// Store the original locator and onElement values for each step in the sequence
+			for (const index in options.step.sequence) {
+				const step = options.step.sequence[index];
+				step.properties["originalOnElement"] = step.properties?.onElement?.value || "";
+			}
+
 			// Convert the step to a rule so it can be invoked in the automation engine.
 			const rule = options.client.convertToRule(options.step);
 
@@ -380,8 +408,74 @@ class StateMachine {
 			// Initialize the loop index in options.data with the parsed value
 			options.data[options.step.id] = options.data[options.step.id] || {};
 
+			// Store the initialized index in options.data for element tracking
+			options.data[options.step.id]['total'] = index;
+
 			// Store the initialized index in options.data for loop tracking
 			options.data[options.step.id]['index'] = index
+		},
+
+		/**
+		 * Updates the `onElement` locator in each step of a sequence if the plugin name
+		 * is "INVOKEFOREACHLOOP". The function calculates the correct index to use based 
+		 * on total vs. current index and updates the locator for XPath or CSS if the 
+		 * locator is relative (starts with ".").
+		 *
+		 * @param {Object} options                 - The options object containing step data and properties.
+		 * @param {Object} options.step            - The current step object.
+		 * @param {string} options.step.pluginName - Name of the plugin.
+		 * @param {Array}  options.step.sequence   - The sequence of steps to be updated.
+		 * @param {Object} options.step.properties - The step's property definitions.
+		 * @param {Object} options.data            - Data object containing the total and current index.
+		 * 
+		 * @returns {void}
+		 */
+		set: (options) => {
+			// Only proceed if the current plugin is "INVOKEFOREACHLOOP"
+			// Exit early if it's not the correct plugin
+			if (options.step.pluginName.toLocaleUpperCase() !== "INVOKEFOREACHLOOP") {
+				return;
+			}
+
+			// Calculate the index used in the element locator.
+			// index = (total steps) - (current step index in the loop)
+			const index = options.data[options.step.id]['total'] - options.data[options.step.id]['index'];
+
+			// The base locator is the element defined on the main step (if any)
+			const baseLocator = options.step.properties?.onElement?.value;
+
+			// Loop through each step in the sequence and update the locator as necessary
+			for (const step of options.step.sequence) {
+				// Retrieve the original `onElement` value. If not provided, default to an empty string
+				let onElement = step.properties?.originalOnElement || "";
+
+				// Determine the locator type (e.g., 'XPATH' or 'CSSSELECTOR'); default to 'XPATH'
+				const locator = step.properties?.locator?.value?.toLocaleUpperCase() || "XPATH";
+
+				// Check if onElement starts with '.', indicating a relative reference
+				const isSelf = onElement?.startsWith(".");
+
+				// Flags for different locator types
+				const isXpath = locator === "XPATH";
+				const isCss = locator === "CSSSELECTOR";
+
+				// If the locator is relative and we are using XPATH, construct a new XPATH
+				if (isSelf && isXpath) {
+					// Example: (//div[contains(@class, "item")])[2]
+					onElement = `(${baseLocator})[${index + 1}]`;
+				}
+
+				// If the locator is relative and we are using CSS, construct a new CSS selector
+				if (isSelf && isCss) {
+					// Example: .some-class:nth-of-type(2)
+					onElement = `${baseLocator}:nth-of-type(${index + 1})`;
+				}
+
+				// If `onElement` is updated, assign it back to the step so it's used in subsequent logic
+				if (onElement) {
+					step.properties.onElement.value = onElement;
+				}
+			}
 		}
 	}
 
@@ -430,16 +524,48 @@ class StateMachine {
 
 	async executeLoopStep(step) {
 		await this.handler.initLoopStep(step, this.data);
-		const canStart = await this.handler.canReplyLoopStep(step, this.data);
 
-		if (!canStart) {
-			return;
+		if (step.pluginName.toLocaleUpperCase() === "INVOKEWHILELOOP") {
+			const canStart = await this.handler.canReplyLoopStep(step, this.data);
+			if (!canStart) {
+				return;
+			}
 		}
+
+		// const f = (step, data) => {
+		// 	if (step.pluginName.toLocaleUpperCase() === "INVOKEFOREACHLOOP") {
+		// 		const index = data[step.id]['total'] - data[step.id]['index'];
+		// 		const baseLocator = step.properties?.onElement?.value;
+
+		// 		for (const s of step.sequence) {
+		// 			let onElement = s.properties?.originalOnElement || "";
+		// 			const locator = s.properties?.locator?.value?.toLocaleUpperCase() || "XPATH";
+
+		// 			const isSelf = onElement?.startsWith(".");
+		// 			const isXpath = locator === "XPATH";
+		// 			const isCss = locator === "CSSSELECTOR";
+
+		// 			if (isSelf && isXpath) {
+		// 				onElement = `(${baseLocator})[${index + 1}]`;
+		// 			}
+		// 			if (isSelf && isCss) {
+		// 				onElement = `${baseLocator}:nth-of-type(${index + 1})`;
+		// 			}
+
+		// 			if (onElement) {
+		// 				s.properties.onElement.value = onElement;
+		// 			}
+		// 		}
+		// 	}
+		// }
 
 		const program = {
 			sequence: step.sequence,
 			index: 0,
 			unwind: async () => {
+				if (step.pluginName.toLocaleUpperCase() === "INVOKEFOREACHLOOP") {
+					StateMachine.foreachLoopHandler.set({ step, data: this.data });
+				}
 				const canContinue = await this.handler.canReplyLoopStep(step, this.data);
 				if (canContinue) {
 					program.index = 0;
