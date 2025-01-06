@@ -23,122 +23,219 @@ async function startDefinition() {
 	const client = new G4Client();
 	const automation = client.newAutomation(undefined, undefined);
 
-	const stateMachine = new StateMachine(definition, {
-		// Implement the `executeStep` method to execute a step asynchronously.
-		executeStep: async (step) => {
-			// Prepare the options object for invoking the step.
-			const options = {
-				automation: automation,
-				session: session,
-				step: step
-			}
+	// const stateMachine = new StateMachine(definition, {
+	// 	// Implement the `executeStep` method to execute a step asynchronously.
+	// 	executeStep: async (step) => {
+	// 		// Prepare the options object for invoking the step.
+	// 		const options = {
+	// 			automation: automation,
+	// 			session: session,
+	// 			step: step
+	// 		}
 
-			// Invoke the step asynchronously and wait for the result.
-			const response = await StateMachine.invokeStep(client, options);
+	// 		// Invoke the step asynchronously and wait for the result.
+	// 		const response = await StateMachine.invokeStep(client, options);
 
-			// Extract the session from the response for further steps.
-			session = response.session;
-		},
+	// 		// Extract the session from the response for further steps.
+	// 		session = response.session;
+	// 	},
 
-		// Implement the `executeIf` method to execute an "If" step asynchronously.
-		executeIf: async (step) => {
-			// Convert the step to a rule.
+	// 	// Implement the `executeIf` method to execute an "If" step asynchronously.
+	// 	executeIf: async (step) => {
+	// 		// Convert the step to a rule.
+	// 		const rule = client.convertToRule(step);
+
+	// 		// Override the plugin name to "Assert" for the "If" step.
+	// 		// This is necessary to ensure the correct plugin is invoked under the sequential automation.
+	// 		// This is only required for the "If" step when running in a sequential workflow designer.
+	// 		rule.pluginName = "Assert";
+
+	// 		// Prepare the options object for invoking the step.
+	// 		const options = {
+	// 			automation: automation,
+	// 			rule: rule,
+	// 			session: session,
+	// 			step: step
+	// 		}
+
+	// 		// Invoke the step asynchronously and wait for the result.
+	// 		const response = await StateMachine.invokeStep(client, options);
+
+	// 		// Find the plugin based on the step ID and the automation result.
+	// 		const plugin = client.findPlugin(step.id, response.automationResult);
+
+	// 		// Extract the session from the response for further steps.
+	// 		session = response.session;
+
+	// 		// Evaluate the automation result to determine if the assertion passed.
+	// 		return client.assertPlugin(plugin);
+	// 	},
+
+	// 	// while loop  : assert the plugin response and execute the loop until the assertion fails or the loop limit is reached
+	// 	// foreach loop: TBD
+	// 	initLoopStep: async (step, data) => {
+	// 		// Prepare the options object for invoking the step.
+	// 		const options = {
+	// 			automation: automation,
+	// 			client: client,
+	// 			session: session,
+	// 			step: step
+	// 		}
+
+	// 		// Invoke the step asynchronously and wait for the result.
+	// 		const response = await StateMachine.resolveMacros(client, options);
+
+	// 		// Extract the rule from the response for further steps.
+	// 		const rule = response[0];
+
+	// 		// Sync the step with the rule parsed rule.
+	// 		client.syncStep(step, rule);
+
+	// 		// Initialize the loop handler with the step and data.
+	// 		const pluginName = step.pluginName.toLocaleUpperCase();
+	// 		switch (pluginName) {
+	// 			case "INVOKEFORLOOP":
+	// 				StateMachine.forLoopHandler.initialize({ step, data });
+	// 				break;
+	// 			case "INVOKEWHILELOOP":
+	// 				await StateMachine.whileLoopHandler.initialize({ automation, step, data, client });
+	// 				break;
+	// 			case "INVOKEFOREACHLOOP":
+	// 				await StateMachine.foreachLoopHandler.initialize({ automation, step, data, client });
+	// 				break;
+	// 			default:
+	// 				break;
+	// 		}
+	// 	},
+
+	// 	canReplyLoopStep: async (step, data) => {
+	// 		// Initialize the loop handler with the step and data.
+	// 		const pluginName = step.pluginName.toLocaleUpperCase();
+	// 		switch (pluginName) {
+	// 			case "INVOKEFORLOOP":
+	// 				return StateMachine.forLoopHandler.assert({ step, data });
+	// 			case "INVOKEWHILELOOP":
+	// 				return await StateMachine.whileLoopHandler.assert({ automation, step, data, client });
+	// 			case "INVOKEFOREACHLOOP":
+	// 				return StateMachine.foreachLoopHandler.assert({ step, data });
+	// 			default:
+	// 				return false;
+	// 		}
+	// 	},
+
+	// 	beforeStepExecution: (step, data) => {
+	// 		//document.getElementById('variables').innerText = JSON.stringify(data, null, 2) + '\r\n';
+	// 		_designer.selectStepById(step.id);
+	// 		_designer.moveViewportToStep(step.id);
+	// 	},
+	// 	// onStepExecuted: (step, data) => {
+	// 	// 	document.getElementById('variables').innerText = JSON.stringify(data, null, 2) + '\r\n';
+	// 	// 	_designer.selectStepById(step.id);
+	// 	// 	_designer.moveViewportToStep(step.id);
+	// 	// },
+
+	// 	onFinished: () => {
+	// 		_designer.setIsReadonly(false);
+	// 	}
+	// });
+
+	const handler = {
+		/**
+		 * Asserts the provided step by converting it to a rule, forcing the plugin name to "Assert",
+		 * and then evaluating the rule to determine which branch to follow in a sequential automation workflow.
+		 *
+		 * @async
+		 * @function assert
+		 * @param {Object} step        - The step object containing the rule definition.
+		 * @param {string} [step.type] - The type of the step (e.g., "IF").
+		 * @returns {Promise<string>} A promise that resolves with the branch name or indication of how the automation logic should proceed.
+		 */
+		assert: async (step) => {
+			// Convert the step object into a rule object that can be processed.
 			const rule = client.convertToRule(step);
 
-			// Override the plugin name to "Assert" for the "If" step.
-			// This is necessary to ensure the correct plugin is invoked under the sequential automation.
-			// This is only required for the "If" step when running in a sequential workflow designer.
+			// Override the plugin name to "Assert" specifically for the "If" step.
+			// This ensures the correct plugin is invoked in a sequential workflow scenario.
 			rule.pluginName = "Assert";
 
-			// Prepare the options object for invoking the step.
+			// Prepare the options object for the step invocation.
+			// Note that automation and session are assumed to be accessible in this scope.
 			const options = {
 				automation: automation,
 				rule: rule,
 				session: session,
 				step: step
-			}
+			};
 
-			// Invoke the step asynchronously and wait for the result.
+			// Invoke the step asynchronously through the StateMachine and wait for the result.
 			const response = await StateMachine.invokeStep(client, options);
 
-			// Find the plugin based on the step ID and the automation result.
+			// Identify the plugin used based on the step ID and the automation result returned.
 			const plugin = client.findPlugin(step.id, response.automationResult);
 
-			// Extract the session from the response for further steps.
+			// Update the session from the response for potential use in subsequent steps.
 			session = response.session;
 
-			// Evaluate the automation result to determine if the assertion passed.
+			// Evaluate the plugin to determine the assertion outcome (e.g., which branch to follow).
+			// This typically returns a string representing the branch name (like "trueBranch" or "falseBranch").
 			return client.assertPlugin(plugin);
 		},
 
-		// while loop  : assert the plugin response and execute the loop until the assertion fails or the loop limit is reached
-		// foreach loop: TBD
-		initLoopStep: async (step, data) => {
-			// Prepare the options object for invoking the step.
-			const options = {
-				automation: automation,
-				client: client,
-				session: session,
-				step: step
+		/**
+		 * Retrieves the sequence associated with a given step.
+		 *
+		 * - If the step's `type` is not "IF" (case-insensitive), it returns `step.sequence` or an empty array.
+		 * - If the step's `type` is "IF", it evaluates which branch to follow using `handler.assert(step)`
+		 *   and returns that branch from the step object.
+		 *
+		 * @async
+		 * @function getSequence
+		 * @param {Object} step            - The step object containing the type and potentially multiple branches
+		 * @param {string} [step.type]     - A string representing the type of the step (e.g., "IF")
+		 * @param {Array}  [step.sequence] - Default sequence to return if the step is not an "IF" type
+		 * @returns {Promise<Array>} A promise that resolves to the appropriate sequence based on the step type
+		 */
+		getSequence: async (step) => {
+			// Convert the type to upper case and check if it is NOT equal to "IF".
+			// If it isn't "IF", just return `step.sequence` or an empty array.
+			if (step.type?.toLocaleUpperCase() !== "IF") {
+				return step.sequence || [];
 			}
 
-			// Invoke the step asynchronously and wait for the result.
-			const response = await StateMachine.resolveMacros(client, options);
+			// If the step is an "IF" type, use the handler to figure out which branch to follow.
+			// `handler.assert(step)` should return the branch key as a string, e.g., "trueBranch" or "falseBranch".
+			const branch = await handler.assert(step);
 
-			// Extract the rule from the response for further steps.
-			const rule = response[0];
-			
-			// Sync the step with the rule parsed rule.
-			client.syncStep(step, rule);
-
-			// Initialize the loop handler with the step and data.
-			const pluginName = step.pluginName.toLocaleUpperCase();
-			switch (pluginName) {
-				case "INVOKEFORLOOP":
-					StateMachine.forLoopHandler.initialize({ step, data });
-					break;
-				case "INVOKEWHILELOOP":
-					await StateMachine.whileLoopHandler.initialize({ automation, step, data, client });
-					break;
-				case "INVOKEFOREACHLOOP":
-					await StateMachine.foreachLoopHandler.initialize({ automation, step, data, client });
-					break;
-				default:
-					break;
-			}
+			// Return the sequence stored under the key that matches the evaluated branch.
+			// This allows dynamic branching based on the result of `handler.assert(step)`.
+			return step.branches[`${branch}`];
 		},
 
-		canReplyLoopStep: async (step, data) => {
-			// Initialize the loop handler with the step and data.
-			const pluginName = step.pluginName.toLocaleUpperCase();
-			switch (pluginName) {
-				case "INVOKEFORLOOP":
-					return StateMachine.forLoopHandler.assert({ step, data });
-				case "INVOKEWHILELOOP":
-					return await StateMachine.whileLoopHandler.assert({ automation, step, data, client });
-				case "INVOKEFOREACHLOOP":
-					return StateMachine.foreachLoopHandler.assert({ step, data });
-				default:
-					return false;
-			}
-		},
-
-		beforeStepExecution: (step, data) => {
-			//document.getElementById('variables').innerText = JSON.stringify(data, null, 2) + '\r\n';
+		/**
+		 * Selects the given step in the designer interface and moves the viewport so that the step is visible.
+		 *
+		 * @function initializeStep
+		 * @param {Object} step    - An object representing the step to be initialized.
+		 * @param {string} step.id - The unique identifier for the step.
+		 */
+		initializeStep: (step) => {
+			// Select the step in the designer by its ID.
 			_designer.selectStepById(step.id);
+
+			// Adjust the viewport so the selected step is brought into view.
 			_designer.moveViewportToStep(step.id);
 		},
-		// onStepExecuted: (step, data) => {
-		// 	document.getElementById('variables').innerText = JSON.stringify(data, null, 2) + '\r\n';
-		// 	_designer.selectStepById(step.id);
-		// 	_designer.moveViewportToStep(step.id);
-		// },
 
-		onFinished: () => {
+		resetDesigner: () => {
 			_designer.setIsReadonly(false);
+		},
+
+		waitFlow: (ms) => {
+			return new Promise(resolve => setTimeout(resolve, ms));
 		}
-	});
-	stateMachine.start();
+	};
+	const stateMachine = new StateMachine(definition, handler);
+	await stateMachine.start();
 }
 
 /**
