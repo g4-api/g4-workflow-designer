@@ -543,7 +543,7 @@ class StateMachine {
 		if (step.pluginName.toLocaleUpperCase() === "INVOKEWHILELOOP") {
 			// Check if the loop can start based on the current state
 			const canStart = await this.handler.canReplyLoopStep(step, this.data);
-			
+
 			// If the condition fails, do not proceed further
 			if (!canStart) {
 				return;
@@ -628,16 +628,16 @@ class StateMachine {
 			this.handler.beforeStepExecution(step, this.data);
 		}
 
-		switch (step.type) {
-			case "container":
-			case "stage":
-			case "job":
+		switch (step.type.toLocaleUpperCase()) {
+			case "CONTAINER":
+			case "STAGE":
+			case "JOB":
 				this.executeContainer(step);
 				break;
-			case 'if':
+			case 'IF':
 				this.executeIfStep(step);
 				break;
-			case 'loop':
+			case 'LOOP':
 				await this.invokeLoopStep(step);
 				break;
 			default:
