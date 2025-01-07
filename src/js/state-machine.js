@@ -167,25 +167,43 @@ class StateMachine {
 
 	async start() {
 		const invoke = async (handler, step, speed) => {
+			const invokeSequence = async (handler, sequence, speed) => {
+				// Process each child step with a delay in between
+				for (const step of sequence) {
+					// Add a delay before invoking the child step
+					await handler.waitFlow(speed);
+
+					// Recursively invoke the child step
+					await invoke(handler, step, speed);
+				}
+			}
+
 			// Initialize the step before processing its children
 			handler.initializeStep(step);
 
+			const stepType = step.type?.toUpperCase();
+
 			// Retrieve the sequence of child steps for the current step
 			const sequence = await handler.getSequence(step);
+
+			// If the step is a loop, process the loop logic
+			if (stepType === "LOOP") {
+				const canLoopStart = await handler.assertCanLoopStart(step);
+				if (!canLoopStart) {
+					return;
+				}
+
+				while (await handler.assertCanLoopContinue(step)) {
+					await invokeSequence(handler, sequence, speed);
+				}
+			}
 
 			// If no child steps, return immediately
 			if (!sequence || sequence.length === 0) {
 				return;
 			}
 
-			// Process each child step with a delay in between
-			for (const step of sequence) {
-				// Add a delay before invoking the child step
-				await handler.waitFlow(speed);
-
-				// Recursively invoke the child step
-				await invoke(handler, step, speed);
-			}
+			await invokeSequence(handler, sequence, speed);
 		};
 
 		// Extract the speed from the properties
@@ -1188,7 +1206,7 @@ class G4Client {
 		const extractions = pluginResponse.extractions;
 
 		// Ensure that 'extractions' is an array and perform validation
-		if(!extractions || !Array.isArray(extractions) || extractions.length === 0) {
+		if (!extractions || !Array.isArray(extractions) || extractions.length === 0) {
 			return false;
 		}
 

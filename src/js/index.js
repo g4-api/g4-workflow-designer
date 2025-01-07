@@ -139,7 +139,100 @@ async function startDefinition() {
 	// 	}
 	// });
 
+	// const forLoopHandler = {
+	// 	/**
+	// 	 * Determines whether the loop should continue by decrementing the index and checking its value.
+	// 	 *
+	// 	 * This method decrements the `index` stored in `options.data` and returns `true` if the new value
+	// 	 * is greater than or equal to zero, indicating that the loop should continue. If the `index` becomes
+	// 	 * negative, it returns `false`, signaling the end of the loop.
+	// 	 *
+	// 	 * @param {Object} options      - The options object containing loop data and step information.
+	// 	 * @param {Object} options.data - An object to store loop-related data, including the `index`.
+	// 	 *
+	// 	 * @returns {boolean} `true` if the loop should continue; otherwise, `false`.
+	// 	 *
+	// 	 * @example
+	// 	 * // Assuming options.data.index is initially 3
+	// 	 * const shouldContinue = forLoopHandler.assert(options); // Decrements index to 2, returns true
+	// 	 * console.log(options.data.index); // Outputs: 2
+	// 	 */
+	// 	assertCanContinue: (options) => {
+	// 		// Decrement the 'index' in options.data and check if it's still non-negative
+	// 		return --options.step.context['index'] > 0;
+	// 	},
+
+	// 	assertCanStart: (options) => {
+	// 		return options.step.context['index'] > 0;
+	// 	},
+
+	// 	/**
+	// 	 * Initializes the loop index based on the provided step argument.
+	// 	 *
+	// 	 * This method retrieves the 'Argument' property from the step's properties. If the argument is a valid
+	// 	 * number, it sets the `index` in `options.data` to that number. Otherwise, it defaults the `index` to 0.
+	// 	 *
+	// 	 * @param {Object} options                                - The options object containing step information and data storage.
+	// 	 * @param {Object} options.step                           - The step object containing properties used for initialization.
+	// 	 * @param {Object} options.step.properties                - An object holding various properties of the step.
+	// 	 * @param {Object} options.step.properties.Argument       - The 'Argument' property used to determine the loop count.
+	// 	 * @param {any}    options.step.properties.Argument.value - The value of the 'Argument' property, expected to be a number or numeric string.
+	// 	 * @param {Object} options.data                           - An object to store loop-related data, including the `index`.
+	// 	 *
+	// 	 * @returns {void}
+	// 	 *
+	// 	 * @example
+	// 	 * const options = {
+	// 	 *     step: {
+	// 	 *         properties: {
+	// 	 *             'Argument': { value: '5' }
+	// 	 *         }
+	// 	 *     },
+	// 	 *     data: {}
+	// 	 * };
+	// 	 *
+	// 	 * forLoopHandler.initialize(options);
+	// 	 * console.log(options.data.index); // Outputs: 5
+	// 	 */
+	// 	initialize: (options) => {
+	// 		// Retrieve the 'Argument' value from the step properties
+	// 		const argument = options.step.properties['argument'].value;
+
+	// 		// Check if the argument is a valid integer using a regular expression
+	// 		const isNumber = `${argument}`.match(/^\d+$/);
+
+	// 		// Parse the argument to an integer if it's a number; otherwise, default to 0
+	// 		const index = isNumber ? parseInt(argument, 10) : 0;
+
+	// 		// Initialize the loop index in options.data with the parsed value
+	// 		options.step.context = options.step.context || {};
+
+	// 		// Store the initialized index in options.data for loop tracking
+	// 		options.step.context['index'] = index
+	// 	}
+	// };
+
+
+
+
+
+
+
+
+
 	const handler = {
+		assertCanLoopContinue: async (step) => {
+			if (step.pluginName?.toLocaleUpperCase() === "INVOKEFORLOOP") {
+				return handler.forLoopHandler.assertCanContinue({ step });
+			}
+		},
+
+		assertCanLoopStart: async (step) => {
+			if (step.pluginName?.toLocaleUpperCase() === "INVOKEFORLOOP") {
+				return handler.forLoopHandler.assertCanStart({ step });
+			}
+		},
+
 		/**
 		 * Asserts the provided step by converting it to a rule, forcing the plugin name to "Assert",
 		 * and then evaluating the rule to determine which branch to follow in a sequential automation workflow.
@@ -150,7 +243,7 @@ async function startDefinition() {
 		 * @param {string} [step.type] - The type of the step (e.g., "IF").
 		 * @returns {Promise<string>} A promise that resolves with the branch name or indication of how the automation logic should proceed.
 		 */
-		assert: async (step) => {
+		assertPlugin: async (step) => {
 			// Convert the step object into a rule object that can be processed.
 			const rule = client.convertToRule(step);
 
@@ -204,7 +297,7 @@ async function startDefinition() {
 
 			// If the step is an "IF" type, use the handler to figure out which branch to follow.
 			// `handler.assert(step)` should return the branch key as a string, e.g., "trueBranch" or "falseBranch".
-			const branch = await handler.assert(step);
+			const branch = await handler.assertPlugin(step);
 
 			// Return the sequence stored under the key that matches the evaluated branch.
 			// This allows dynamic branching based on the result of `handler.assert(step)`.
@@ -219,6 +312,12 @@ async function startDefinition() {
 		 * @param {string} step.id - The unique identifier for the step.
 		 */
 		initializeStep: (step) => {
+			const pluginName = step.pluginName.toLocaleUpperCase();
+
+			if (pluginName === "INVOKEFORLOOP") {
+				handler.forLoopHandler.initialize({ step });
+			}
+
 			// Select the step in the designer by its ID.
 			_designer.selectStepById(step.id);
 
@@ -226,12 +325,99 @@ async function startDefinition() {
 			_designer.moveViewportToStep(step.id);
 		},
 
+		/**
+		 * Resets the designer by disabling read-only mode, allowing full editing capabilities.
+		 *
+		 * @function resetDesigner
+		 */
 		resetDesigner: () => {
+			// Re-enable editing by setting the designer to non-read-only mode.
 			_designer.setIsReadonly(false);
 		},
 
+		/**
+		 * Pauses execution for the specified number of milliseconds.
+		 *
+		 * @function waitFlow
+		 * @param {number} ms - The number of milliseconds to wait before resolving the Promise.
+		 * @returns {Promise<void>} A Promise that resolves after the specified delay.
+		 */
 		waitFlow: (ms) => {
-			return new Promise(resolve => setTimeout(resolve, ms));
+			// Returns a Promise that resolves after 'ms' milliseconds, effectively pausing execution.
+			return new Promise((resolve) => setTimeout(resolve, ms));
+		},
+
+		forLoopHandler: {
+			/**
+			 * Determines whether the loop should continue by decrementing the index and checking its value.
+			 *
+			 * This method decrements the `index` stored in `options.data` and returns `true` if the new value
+			 * is greater than or equal to zero, indicating that the loop should continue. If the `index` becomes
+			 * negative, it returns `false`, signaling the end of the loop.
+			 *
+			 * @param {Object} options      - The options object containing loop data and step information.
+			 * @param {Object} options.data - An object to store loop-related data, including the `index`.
+			 *
+			 * @returns {boolean} `true` if the loop should continue; otherwise, `false`.
+			 *
+			 * @example
+			 * // Assuming options.data.index is initially 3
+			 * const shouldContinue = forLoopHandler.assert(options); // Decrements index to 2, returns true
+			 * console.log(options.data.index); // Outputs: 2
+			 */
+			assertCanContinue: (options) => {
+				// Decrement the 'index' in options.data and check if it's still non-negative
+				return --options.step.context['index'] > 0;
+			},
+
+			assertCanStart: (options) => {
+				return options.step.context['index'] > 0;
+			},
+
+			/**
+			 * Initializes the loop index based on the provided step argument.
+			 *
+			 * This method retrieves the 'Argument' property from the step's properties. If the argument is a valid
+			 * number, it sets the `index` in `options.data` to that number. Otherwise, it defaults the `index` to 0.
+			 *
+			 * @param {Object} options                                - The options object containing step information and data storage.
+			 * @param {Object} options.step                           - The step object containing properties used for initialization.
+			 * @param {Object} options.step.properties                - An object holding various properties of the step.
+			 * @param {Object} options.step.properties.Argument       - The 'Argument' property used to determine the loop count.
+			 * @param {any}    options.step.properties.Argument.value - The value of the 'Argument' property, expected to be a number or numeric string.
+			 * @param {Object} options.data                           - An object to store loop-related data, including the `index`.
+			 *
+			 * @returns {void}
+			 *
+			 * @example
+			 * const options = {
+			 *     step: {
+			 *         properties: {
+			 *             'Argument': { value: '5' }
+			 *         }
+			 *     },
+			 *     data: {}
+			 * };
+			 *
+			 * forLoopHandler.initialize(options);
+			 * console.log(options.data.index); // Outputs: 5
+			 */
+			initialize: (options) => {
+				// Retrieve the 'Argument' value from the step properties
+				const argument = options.step.properties['argument'].value;
+
+				// Check if the argument is a valid integer using a regular expression
+				const isNumber = `${argument}`.match(/^\d+$/);
+
+				// Parse the argument to an integer if it's a number; otherwise, default to 0
+				const index = isNumber ? parseInt(argument, 10) : 0;
+
+				// Initialize the loop index in options.data with the parsed value
+				options.step.context = options.step.context || {};
+
+				// Store the initialized index in options.data for loop tracking
+				options.step.context['index'] = index
+			}
 		}
 	};
 	const stateMachine = new StateMachine(definition, handler);
