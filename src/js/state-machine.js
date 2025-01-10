@@ -125,6 +125,12 @@ class StateMachine {
 		// Convert the provided step object into a rule using the client's utility method.
 		const rule = options.rule ? options.rule : client.convertToRule(options.step);
 
+		// Exclude certain step types from being directly invoked as rules.
+		const excludeStepTypes = ['STAGE', 'JOB', 'LOOP', 'IF', 'CONTAINER'];
+		if (excludeStepTypes.includes(options.step.type?.toUpperCase())) {
+			return;
+		}
+
 		// Create an array of rules, currently containing only the converted rule.
 		const rules = [rule];
 
@@ -166,20 +172,26 @@ class StateMachine {
 	}
 
 	async start() {
-		const invoke = async (handler, step, speed) => {
-			const invokeSequence = async (handler, sequence, speed) => {
+		const definition = this.definition;
+		const client = new G4Client();
+		const automation = client.newAutomation(undefined, undefined);
+
+		let session = undefined;
+
+		const invoke = async (automation, client, handler, step, speed) => {
+			const invokeSequence = async (automation, client, handler, sequence, speed) => {
 				// Process each child step with a delay in between
 				for (const step of sequence) {
 					// Add a delay before invoking the child step
 					await handler.waitFlow(speed);
 
 					// Recursively invoke the child step
-					await invoke(handler, step, speed);
+					await invoke(automation, client, handler, step, speed);
 				}
 			}
 
 			// Initialize the step before processing its children
-			handler.initializeStep(step);
+			await handler.initializeStep({automation, session, step, client});
 
 			const stepType = step.type?.toUpperCase();
 
@@ -194,16 +206,29 @@ class StateMachine {
 				}
 
 				while (await handler.assertCanLoopContinue(step)) {
-					await invokeSequence(handler, sequence, speed);
+					await invokeSequence(automation, client, handler, sequence, speed);
 				}
 			}
+
+			const options = {
+				client,
+				step,
+				automation,
+				session
+			}
+
+			// Invoke the step asynchronously and wait for the result.
+			const response = await StateMachine.invokeStep(client, options);
+
+			// Extract the session from the response for further steps.
+			session = response?.session;
 
 			// If no child steps, return immediately
 			if (!sequence || sequence.length === 0) {
 				return;
 			}
 
-			await invokeSequence(handler, sequence, speed);
+			await invokeSequence(automation, client, handler, sequence, speed);
 		};
 
 		// Extract the speed from the properties
@@ -215,7 +240,7 @@ class StateMachine {
 			await this.handler.waitFlow(speed);
 
 			// Invoke the step
-			await invoke(this.handler, step, speed);
+			await invoke(automation, client, this.handler, step, speed);
 		}
 
 		this.isRunning = false;

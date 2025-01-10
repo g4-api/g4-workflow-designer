@@ -19,217 +19,154 @@ async function startDefinition() {
 
 	const definition = _designer.getDefinition();
 
-	let session = undefined;
-	const client = new G4Client();
-	const automation = client.newAutomation(undefined, undefined);
+	// let session = undefined;
+	// const client = new G4Client();
+	// const automation = client.newAutomation(undefined, undefined);
 
-	// const stateMachine = new StateMachine(definition, {
-	// 	// Implement the `executeStep` method to execute a step asynchronously.
-	// 	executeStep: async (step) => {
-	// 		// Prepare the options object for invoking the step.
-	// 		const options = {
-	// 			automation: automation,
-	// 			session: session,
-	// 			step: step
-	// 		}
+	foreachLoopHandler = {
+		assertCanContinue: (options) => {
+			// Decrement the 'index' in options.data and check if it's still non-negative
+			const canContinue = --options.step.context['index'] > 0;
 
-	// 		// Invoke the step asynchronously and wait for the result.
-	// 		const response = await StateMachine.invokeStep(client, options);
+			// If the index is non-negative, the loop should continue
+			if (canContinue) {
+				return true;
+			}
 
-	// 		// Extract the session from the response for further steps.
-	// 		session = response.session;
-	// 	},
+			// If the loop should not continue, reset the 'onElement' property for each step in the sequence
+			for (const index in options.step.sequence) {
+				// Retrieve the current step in the sequence
+				const step = options.step.sequence[index];
 
-	// 	// Implement the `executeIf` method to execute an "If" step asynchronously.
-	// 	executeIf: async (step) => {
-	// 		// Convert the step to a rule.
-	// 		const rule = client.convertToRule(step);
+				// Check if the step has an 'onElement' property
+				if (step.properties["onElement"]) {
+					// Restore the original 'onElement' value
+					step.properties["onElement"].value = step.context["originalOnElement"];
+				}
+			}
 
-	// 		// Override the plugin name to "Assert" for the "If" step.
-	// 		// This is necessary to ensure the correct plugin is invoked under the sequential automation.
-	// 		// This is only required for the "If" step when running in a sequential workflow designer.
-	// 		rule.pluginName = "Assert";
+			// Return false to indicate the loop should not continue
+			return false;
+		},
 
-	// 		// Prepare the options object for invoking the step.
-	// 		const options = {
-	// 			automation: automation,
-	// 			rule: rule,
-	// 			session: session,
-	// 			step: step
-	// 		}
+		assertCanStart: (options) => {
+			return true;
+		},
 
-	// 		// Invoke the step asynchronously and wait for the result.
-	// 		const response = await StateMachine.invokeStep(client, options);
+		initialize: async (options) => {
+			// Store the original locator and onElement values for each step in the sequence
+			for (const index in options.step.sequence) {
+				const step = options.step.sequence[index];
+				step.context["originalOnElement"] = step.properties?.onElement?.value || "";
+			}
 
-	// 		// Find the plugin based on the step ID and the automation result.
-	// 		const plugin = client.findPlugin(step.id, response.automationResult);
+			// Remove the step type to prevent the step from being blocked and allow it to run as a rule (Assert)
+			options.step.type = undefined;
 
-	// 		// Extract the session from the response for further steps.
-	// 		session = response.session;
+			// Convert the step to a rule so it can be invoked in the automation engine.
+			const rule = options.client.convertToRule(options.step);
 
-	// 		// Evaluate the automation result to determine if the assertion passed.
-	// 		return client.assertPlugin(plugin);
-	// 	},
+			// Override the plugin name to "Assert" for the "If" step. This is necessary to ensure
+			// the correct plugin is invoked under the sequential automation specifically for "If" logic.
+			rule.pluginName = "Assert";
+			rule.argument = "{{$ --Condition:ElementsCount --Expected:0 --Operator:Greater}}";
 
-	// 	// while loop  : assert the plugin response and execute the loop until the assertion fails or the loop limit is reached
-	// 	// foreach loop: TBD
-	// 	initLoopStep: async (step, data) => {
-	// 		// Prepare the options object for invoking the step.
-	// 		const options = {
-	// 			automation: automation,
-	// 			client: client,
-	// 			session: session,
-	// 			step: step
-	// 		}
+			// Prepare the options object for invoking the step.
+			const invokeOptions = {
+				automation: options.automation,
+				rule: rule,
+				session: options.session,
+				step: options.step
+			};
 
-	// 		// Invoke the step asynchronously and wait for the result.
-	// 		const response = await StateMachine.resolveMacros(client, options);
+			// Invoke the step asynchronously and wait for the result.
+			const response = await StateMachine.invokeStep(options.client, invokeOptions);
 
-	// 		// Extract the rule from the response for further steps.
-	// 		const rule = response[0];
+			// Locate the plugin in the automation result using the step ID.
+			const plugin = options.client.findPlugin(options.step.id, response.automationResult);
 
-	// 		// Sync the step with the rule parsed rule.
-	// 		client.syncStep(step, rule);
+			// Extract the index from the response and store it in the data object.
+			const index = parseInt(plugin.extractions[0].entities[0].content['Actual']);
 
-	// 		// Initialize the loop handler with the step and data.
-	// 		const pluginName = step.pluginName.toLocaleUpperCase();
-	// 		switch (pluginName) {
-	// 			case "INVOKEFORLOOP":
-	// 				StateMachine.forLoopHandler.initialize({ step, data });
-	// 				break;
-	// 			case "INVOKEWHILELOOP":
-	// 				await StateMachine.whileLoopHandler.initialize({ automation, step, data, client });
-	// 				break;
-	// 			case "INVOKEFOREACHLOOP":
-	// 				await StateMachine.foreachLoopHandler.initialize({ automation, step, data, client });
-	// 				break;
-	// 			default:
-	// 				break;
-	// 		}
-	// 	},
+			// Update the session with any new data from the response.
+			options.session = response.session;
 
-	// 	canReplyLoopStep: async (step, data) => {
-	// 		// Initialize the loop handler with the step and data.
-	// 		const pluginName = step.pluginName.toLocaleUpperCase();
-	// 		switch (pluginName) {
-	// 			case "INVOKEFORLOOP":
-	// 				return StateMachine.forLoopHandler.assert({ step, data });
-	// 			case "INVOKEWHILELOOP":
-	// 				return await StateMachine.whileLoopHandler.assert({ automation, step, data, client });
-	// 			case "INVOKEFOREACHLOOP":
-	// 				return StateMachine.foreachLoopHandler.assert({ step, data });
-	// 			default:
-	// 				return false;
-	// 		}
-	// 	},
+			// Reset the step type to "INVOKEFOREACHLOOP" for the loop to continue.
+			options.step.type = "loop";
 
-	// 	beforeStepExecution: (step, data) => {
-	// 		//document.getElementById('variables').innerText = JSON.stringify(data, null, 2) + '\r\n';
-	// 		_designer.selectStepById(step.id);
-	// 		_designer.moveViewportToStep(step.id);
-	// 	},
-	// 	// onStepExecuted: (step, data) => {
-	// 	// 	document.getElementById('variables').innerText = JSON.stringify(data, null, 2) + '\r\n';
-	// 	// 	_designer.selectStepById(step.id);
-	// 	// 	_designer.moveViewportToStep(step.id);
-	// 	// },
+			// Store the initialized index in options.data for element tracking
+			options.step.context['total'] = index;
 
-	// 	onFinished: () => {
-	// 		_designer.setIsReadonly(false);
-	// 	}
-	// });
+			// Store the initialized index in options.data for loop tracking
+			options.step.context['index'] = index
+		},
 
-	// const forLoopHandler = {
-	// 	/**
-	// 	 * Determines whether the loop should continue by decrementing the index and checking its value.
-	// 	 *
-	// 	 * This method decrements the `index` stored in `options.data` and returns `true` if the new value
-	// 	 * is greater than or equal to zero, indicating that the loop should continue. If the `index` becomes
-	// 	 * negative, it returns `false`, signaling the end of the loop.
-	// 	 *
-	// 	 * @param {Object} options      - The options object containing loop data and step information.
-	// 	 * @param {Object} options.data - An object to store loop-related data, including the `index`.
-	// 	 *
-	// 	 * @returns {boolean} `true` if the loop should continue; otherwise, `false`.
-	// 	 *
-	// 	 * @example
-	// 	 * // Assuming options.data.index is initially 3
-	// 	 * const shouldContinue = forLoopHandler.assert(options); // Decrements index to 2, returns true
-	// 	 * console.log(options.data.index); // Outputs: 2
-	// 	 */
-	// 	assertCanContinue: (options) => {
-	// 		// Decrement the 'index' in options.data and check if it's still non-negative
-	// 		return --options.step.context['index'] > 0;
-	// 	},
+		set: (options) => {
+			// Only proceed if the current plugin is "INVOKEFOREACHLOOP"
+			// Exit early if it's not the correct plugin
+			if (options.step.pluginName.toLocaleUpperCase() !== "INVOKEFOREACHLOOP") {
+				return;
+			}
 
-	// 	assertCanStart: (options) => {
-	// 		return options.step.context['index'] > 0;
-	// 	},
+			// Calculate the index used in the element locator.
+			// index = (total steps) - (current step index in the loop)
+			const index = options.step.context['total'] - options.step.context['index'];
 
-	// 	/**
-	// 	 * Initializes the loop index based on the provided step argument.
-	// 	 *
-	// 	 * This method retrieves the 'Argument' property from the step's properties. If the argument is a valid
-	// 	 * number, it sets the `index` in `options.data` to that number. Otherwise, it defaults the `index` to 0.
-	// 	 *
-	// 	 * @param {Object} options                                - The options object containing step information and data storage.
-	// 	 * @param {Object} options.step                           - The step object containing properties used for initialization.
-	// 	 * @param {Object} options.step.properties                - An object holding various properties of the step.
-	// 	 * @param {Object} options.step.properties.Argument       - The 'Argument' property used to determine the loop count.
-	// 	 * @param {any}    options.step.properties.Argument.value - The value of the 'Argument' property, expected to be a number or numeric string.
-	// 	 * @param {Object} options.data                           - An object to store loop-related data, including the `index`.
-	// 	 *
-	// 	 * @returns {void}
-	// 	 *
-	// 	 * @example
-	// 	 * const options = {
-	// 	 *     step: {
-	// 	 *         properties: {
-	// 	 *             'Argument': { value: '5' }
-	// 	 *         }
-	// 	 *     },
-	// 	 *     data: {}
-	// 	 * };
-	// 	 *
-	// 	 * forLoopHandler.initialize(options);
-	// 	 * console.log(options.data.index); // Outputs: 5
-	// 	 */
-	// 	initialize: (options) => {
-	// 		// Retrieve the 'Argument' value from the step properties
-	// 		const argument = options.step.properties['argument'].value;
+			// The base locator is the element defined on the main step (if any)
+			const baseLocator = options.step.properties?.onElement?.value;
 
-	// 		// Check if the argument is a valid integer using a regular expression
-	// 		const isNumber = `${argument}`.match(/^\d+$/);
+			// Loop through each step in the sequence and update the locator as necessary
+			for (const step of options.step.sequence) {
+				// Retrieve the original `onElement` value. If not provided, default to an empty string
+				let onElement = step.context?.originalOnElement || "";
 
-	// 		// Parse the argument to an integer if it's a number; otherwise, default to 0
-	// 		const index = isNumber ? parseInt(argument, 10) : 0;
+				// Determine the locator type (e.g., 'XPATH' or 'CSSSELECTOR'); default to 'XPATH'
+				const locator = step.properties?.locator?.value?.toLocaleUpperCase() || "XPATH";
 
-	// 		// Initialize the loop index in options.data with the parsed value
-	// 		options.step.context = options.step.context || {};
+				// Check if onElement starts with '.', indicating a relative reference
+				const isSelf = onElement?.startsWith(".");
 
-	// 		// Store the initialized index in options.data for loop tracking
-	// 		options.step.context['index'] = index
-	// 	}
-	// };
+				// Flags for different locator types
+				const isXpath = locator === "XPATH";
+				const isCss = locator === "CSSSELECTOR";
 
+				// If the locator is relative and we are using XPATH, construct a new XPATH
+				if (isSelf && isXpath) {
+					// Example: (//div[contains(@class, "item")])[2]
+					onElement = `(${baseLocator})[${index + 1}]`;
+				}
 
+				// If the locator is relative and we are using CSS, construct a new CSS selector
+				if (isSelf && isCss) {
+					// Example: .some-class:nth-of-type(2)
+					onElement = `${baseLocator}:nth-of-type(${index + 1})`;
+				}
 
-
-
-
-
-
+				// If `onElement` is updated, assign it back to the step so it's used in subsequent logic
+				if (onElement) {
+					step.properties.onElement.value = onElement;
+				}
+			}
+		}
+	}
 
 	const handler = {
 		assertCanLoopContinue: async (step) => {
 			if (step.pluginName?.toLocaleUpperCase() === "INVOKEFORLOOP") {
 				return handler.forLoopHandler.assertCanContinue({ step });
 			}
+			if (step.pluginName?.toLocaleUpperCase() === "INVOKEFOREACHLOOP") {
+				foreachLoopHandler.set({ step });
+				return foreachLoopHandler.assertCanContinue({ step });
+			}
 		},
 
 		assertCanLoopStart: async (step) => {
 			if (step.pluginName?.toLocaleUpperCase() === "INVOKEFORLOOP") {
 				return handler.forLoopHandler.assertCanStart({ step });
+			}
+			if (step.pluginName?.toLocaleUpperCase() === "INVOKEFOREACHLOOP") {
+				return  foreachLoopHandler.assertCanStart({ step });
 			}
 		},
 
@@ -311,18 +248,22 @@ async function startDefinition() {
 		 * @param {Object} step    - An object representing the step to be initialized.
 		 * @param {string} step.id - The unique identifier for the step.
 		 */
-		initializeStep: (step) => {
-			const pluginName = step.pluginName.toLocaleUpperCase();
+		initializeStep: async (options) => {
+			const pluginName = options.step.pluginName.toLocaleUpperCase();
 
 			if (pluginName === "INVOKEFORLOOP") {
-				handler.forLoopHandler.initialize({ step });
+				handler.forLoopHandler.initialize({ step: options.step });
+			}
+
+			if (pluginName === "INVOKEFOREACHLOOP") {
+				await foreachLoopHandler.initialize(options);
 			}
 
 			// Select the step in the designer by its ID.
-			_designer.selectStepById(step.id);
+			_designer.selectStepById(options.step.id);
 
 			// Adjust the viewport so the selected step is brought into view.
-			_designer.moveViewportToStep(step.id);
+			_designer.moveViewportToStep(options.step.id);
 		},
 
 		/**
@@ -370,7 +311,19 @@ async function startDefinition() {
 				return --options.step.context['index'] > 0;
 			},
 
+			/**
+			 * Determines whether the step is allowed to start based on the current `index` in the step's context.
+			 *
+			 * @function assertCanStart
+			 * @param {Object} options - An object containing the necessary parameters for this check.
+			 * @param {Object} options.step               - The step object with context information.
+			 * @param {Object} options.step.context       - The context object within the step.
+			 * @param {number} options.step.context.index - The index used to determine if the step can start.
+			 * @returns {boolean} Returns `true` if `index` is greater than 0, otherwise `false`.
+			 */
 			assertCanStart: (options) => {
+				// Check the 'index' in the step's context.
+				// If it's greater than 0, allow the step to proceed; otherwise, block it.
 				return options.step.context['index'] > 0;
 			},
 
@@ -420,6 +373,7 @@ async function startDefinition() {
 			}
 		}
 	};
+
 	const stateMachine = new StateMachine(definition, handler);
 	await stateMachine.start();
 }
@@ -513,9 +467,6 @@ async function initializeDesigner() {
 
 	// Create the workflow designer using the configuration and start definition.
 	_designer = sequentialWorkflowDesigner.Designer.create(designerHtmlElement, startDefinition, configuration);
-
-	// Attach an event listener to the "Run" button for executing workflows.
-	//document.getElementById('run').addEventListener('click', onRunClicked);
 }
 
 /**
