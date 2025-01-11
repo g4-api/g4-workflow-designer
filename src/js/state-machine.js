@@ -171,79 +171,138 @@ class StateMachine {
 		}
 	}
 
+	/**
+	 * Initiates the automation process.
+	 * Sets up the G4 client, creates an automation instance, and iterates
+	 * over each step defined in the sequence. Each step is invoked asynchronously
+	 * with a configurable delay (speed) before execution.
+	 *
+	 * @async
+	 * @function start
+	 * @returns {Promise<void>} Resolves when the entire sequence of steps has finished processing.
+	 */
 	async start() {
+		// Retrieve the automation definition from the current instance
 		const definition = this.definition;
+
+		// Create a new G4 client instance
 		const client = new G4Client();
+
+		// Instantiate a new automation object from the client
 		const automation = client.newAutomation(undefined, undefined);
 
+		// Used to store session data between steps
 		let session = undefined;
 
+		/**
+		 * Recursively invokes a step (and potentially its child steps) in the automation.
+		 *
+		 * @async
+		 * @function invoke
+		 * @param {object} automation - The automation instance to run.
+		 * @param {object} client     - The G4 client instance.
+		 * @param {object} handler    - The handler containing methods for step logic (e.g., waitFlow, initializeStep, etc.).
+		 * @param {object} step       - The current step configuration object.
+		 * @param {number} speed      - The delay (in ms) to wait before executing each step or child step.
+		 * @returns {Promise<void>} Resolves when the step (and its children) have finished processing.
+		 */
 		const invoke = async (automation, client, handler, step, speed) => {
+			/**
+			 * Invokes each child step in the provided sequence with a delay in between steps.
+			 *
+			 * @async
+			 * @function invokeSequence
+			 * @param {object}        automation - The automation instance to run.
+			 * @param {object}        client     - The G4 client instance.
+			 * @param {object}        handler    - The handler containing methods for step logic.
+			 * @param {Array<object>} sequence   - An array of step configuration objects to process.
+			 * @param {number}        speed      - The delay (in ms) to wait before executing each child step.
+			 * @returns {Promise<void>} Resolves when all child steps in the sequence have been processed.
+			 */
 			const invokeSequence = async (automation, client, handler, sequence, speed) => {
-				// Process each child step with a delay in between
+				// Process each child step with a delay before invoking
 				for (const step of sequence) {
-					// Add a delay before invoking the child step
+					// Wait for the specified delay before the next step
 					await handler.waitFlow(speed);
 
 					// Recursively invoke the child step
 					await invoke(automation, client, handler, step, speed);
 				}
-			}
+			};
 
-			// Initialize the step before processing its children
-			await handler.initializeStep({automation, session, step, client});
+			// Initialize the current step before processing its children
+			await handler.initializeStep({ automation, session, step, client });
 
+			// Convert the step type to uppercase for easier checking
 			const stepType = step.type?.toUpperCase();
 
-			// Retrieve the sequence of child steps for the current step
+			// Retrieve any child steps associated with the current step
 			const sequence = await handler.getSequence(step);
 
-			// If the step is a loop, process the loop logic
+			// If the step is a LOOP step, handle looping logic
 			if (stepType === "LOOP") {
-				const canLoopStart = await handler.assertCanLoopStart(step);
+				// Initialize options for the loop handler
+				const options = {
+					step,
+					client, 
+					automation,
+					session
+				};
+
+				// Check if we can start the loop
+				const canLoopStart = await handler.assertCanLoopStart(options);
 				if (!canLoopStart) {
 					return;
 				}
 
-				while (await handler.assertCanLoopContinue(step)) {
+				// Continue looping as long as a condition is satisfied
+				while (await handler.assertCanLoopContinue(options)) {
 					await invokeSequence(automation, client, handler, sequence, speed);
 				}
+
+				// Exit after the loop is done
+				return;
 			}
 
+			// Build the options object to pass to the StateMachine
 			const options = {
 				client,
 				step,
 				automation,
-				session
-			}
+				session,
+			};
 
-			// Invoke the step asynchronously and wait for the result.
+			// Invoke the current step via the StateMachine
 			const response = await StateMachine.invokeStep(client, options);
 
-			// Extract the session from the response for further steps.
+			// Update the session if returned from the step
 			session = response?.session;
 
-			// If no child steps, return immediately
+			// If there are no child steps, we can exit here
 			if (!sequence || sequence.length === 0) {
 				return;
 			}
 
+			// Otherwise, process child steps
 			await invokeSequence(automation, client, handler, sequence, speed);
 		};
 
-		// Extract the speed from the properties
+		// Extract the speed (delay) configuration from the definition properties
 		const speed = this.definition.properties["speed"];
 
-		// For each step in the sequence, invoke the step and wait for the specified speed
+		// Iterate through each top-level step in the definition's sequence
 		for (const step of this.definition.sequence) {
-			// Add a delay before invoking the step
+			// Wait before invoking each step (based on the specified speed)
 			await this.handler.waitFlow(speed);
 
-			// Invoke the step
+			// Invoke the current step
 			await invoke(automation, client, this.handler, step, speed);
 		}
 
+		// Indicate that the automation is no longer running
 		this.isRunning = false;
+
+		// Reset the designer or UI state after all steps have been processed
 		this.handler.resetDesigner();
 	}
 }
