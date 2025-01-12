@@ -19,6 +19,56 @@ async function startDefinition() {
 
 	const definition = _designer.getDefinition();
 
+	const whileLoopHandler = {
+		assertCanContinue: async (options) => {
+			// Remove the step type to prevent the step from being blocked and allow it to run as a rule (Assert)
+			options.step.type = undefined;
+
+			// Convert the step to a rule so it can be invoked in the automation engine.
+			const rule = options.client.convertToRule(options.step);
+
+			// Override the plugin name to "Assert" for the "If" step. This is necessary to ensure
+			// the correct plugin is invoked under the sequential automation specifically for "If" logic.
+			rule.pluginName = "Assert";
+
+			// Prepare the options object for invoking the step.
+			const invokeOptions = {
+				automation: options.automation,
+				rule: rule,
+				session: options.session,
+				step: options.step
+			};
+
+			// Invoke the step asynchronously and wait for the result.
+			const response = await StateMachine.invokeStep(options.client, invokeOptions);
+
+			// Locate the plugin in the automation result using the step ID.
+			const plugin = options.client.findPlugin(options.step.id, response.automationResult);
+
+			// Assert the plugin to determine if the loop should continue.
+			const assertion = options.client.assertPlugin(plugin);
+
+			// Update the session with any new data from the response.
+			options.session = response.session;
+
+			// Reset the step type to "loop" for the loop to continue
+			options.step.type = "loop";
+
+			// Store the assertion result for subsequent steps.
+			options.step.context['assertion'] = assertion;
+
+			// Return the assertion result to decide loop continuation (true/false).
+			return assertion;
+		},
+
+		assertCanStart: (options) => {
+			return true;
+		},
+
+		initialize: (options) => {
+		}
+	};
+
 	const handler = {
 		assertCanLoopContinue: async (options) => {
 			if (options.step.pluginName?.toLocaleUpperCase() === "INVOKEFORLOOP") {
@@ -29,6 +79,10 @@ async function startDefinition() {
 				handler.foreachLoopHandler.set(options);
 				return handler.foreachLoopHandler.assertCanContinue(options);
 			}
+
+			if(options.step.pluginName?.toLocaleUpperCase() === "INVOKEWHILELOOP") {
+				return whileLoopHandler.assertCanContinue(options);
+			}
 		},
 
 		assertCanLoopStart: async (options) => {
@@ -37,6 +91,10 @@ async function startDefinition() {
 			}
 			if (options.step.pluginName?.toLocaleUpperCase() === "INVOKEFOREACHLOOP") {
 				return handler.foreachLoopHandler.assertCanStart(options);
+			}
+
+			if(options.step.pluginName?.toLocaleUpperCase() === "INVOKEWHILELOOP") {
+				return whileLoopHandler.assertCanStart(options);
 			}
 		},
 
