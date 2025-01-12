@@ -65,7 +65,8 @@ async function startDefinition() {
 			return true;
 		},
 
-		initialize: (options) => {
+		initialize: async (options) => {
+			await handler.resolveMacros(options);
 		}
 	};
 
@@ -80,7 +81,7 @@ async function startDefinition() {
 				return handler.foreachLoopHandler.assertCanContinue(options);
 			}
 
-			if(options.step.pluginName?.toLocaleUpperCase() === "INVOKEWHILELOOP") {
+			if (options.step.pluginName?.toLocaleUpperCase() === "INVOKEWHILELOOP") {
 				return whileLoopHandler.assertCanContinue(options);
 			}
 		},
@@ -93,7 +94,7 @@ async function startDefinition() {
 				return handler.foreachLoopHandler.assertCanStart(options);
 			}
 
-			if(options.step.pluginName?.toLocaleUpperCase() === "INVOKEWHILELOOP") {
+			if (options.step.pluginName?.toLocaleUpperCase() === "INVOKEWHILELOOP") {
 				return whileLoopHandler.assertCanStart(options);
 			}
 		},
@@ -180,7 +181,7 @@ async function startDefinition() {
 			const pluginName = options.step.pluginName.toLocaleUpperCase();
 
 			if (pluginName === "INVOKEFORLOOP") {
-				handler.forLoopHandler.initialize({ step: options.step });
+				await handler.forLoopHandler.initialize(options);
 			}
 
 			if (pluginName === "INVOKEFOREACHLOOP") {
@@ -216,6 +217,50 @@ async function startDefinition() {
 			return new Promise((resolve) => setTimeout(resolve, ms));
 		},
 
+		resolveMacros: async (options) => {
+			// Determine whether to use the provided rule or convert the step into a rule using the client's method.
+			const rule = options.rule ? options.rule : options.client.convertToRule(options.step);
+
+			// Create an array of rules, currently containing only the converted or provided rule.
+			const rules = [rule];
+
+			// Assign the generated rules to the first job of the first stage in the automation configuration.
+			// This assumes that the automation configuration has at least one stage and one job.
+			options.automation.stages[0].jobs[0].rules = rules;
+
+			// Update the driver parameters based on the provided session.
+			// If `session` is undefined, retain the existing driver parameters.
+			// Otherwise, set the driver to reference the new session ID.
+			options.automation.driverParameters = options.session === undefined
+				? options.automation.driverParameters
+				: { driver: `Id(${options.session})` };
+
+			try {
+				// Invoke the macro resolution process asynchronously and wait for the result.
+				// This method should return the resolved rules after successful invocation.
+				const resolvedRule = (await options.client.resolveMacros(options.automation))[0];
+
+				// excludeKeys contains the properties that should not be considered for loop initialization
+				const excludeKeys = ["rules"];
+
+				// All property keys except those in excludeKeys
+				const properties = Object.keys(options.step.properties).filter(
+					(key) => !excludeKeys.includes(key)
+				);
+
+				// Update the step properties with the resolved values
+				for (const property of properties) {
+					options.step.properties[property].value = resolvedRule[property];
+				}
+			} catch (error) {
+				// Handle any errors that occur during the macro resolution invocation.
+				console.error('Resolution invocation failed:', error);
+
+				// Rethrow the error after logging to allow further handling upstream.
+				throw error;
+			}
+		},
+
 		forLoopHandler: {
 			/**
 			 * Determines whether the loop should continue by decrementing the index and checking its value.
@@ -239,20 +284,8 @@ async function startDefinition() {
 				return --options.step.context['index'] >= 0;
 			},
 
-			/**
-			 * Determines whether the step is allowed to start based on the current `index` in the step's context.
-			 *
-			 * @function assertCanStart
-			 * @param {Object} options - An object containing the necessary parameters for this check.
-			 * @param {Object} options.step               - The step object with context information.
-			 * @param {Object} options.step.context       - The context object within the step.
-			 * @param {number} options.step.context.index - The index used to determine if the step can start.
-			 * @returns {boolean} Returns `true` if `index` is greater than 0, otherwise `false`.
-			 */
 			assertCanStart: (options) => {
-				// Check the 'index' in the step's context.
-				// If it's greater than 0, allow the step to proceed; otherwise, block it.
-				return options.step.context['index'] > 0;
+				return true;
 			},
 
 			/**
@@ -283,7 +316,10 @@ async function startDefinition() {
 			 * forLoopHandler.initialize(options);
 			 * console.log(options.data.index); // Outputs: 5
 			 */
-			initialize: (options) => {
+			initialize: async (options) => {
+				// Resolve any macros in the step properties before proceeding
+				await handler.resolveMacros(options);
+
 				// Retrieve the 'Argument' value from the step properties
 				const argument = options.step.properties['argument'].value;
 
@@ -336,55 +372,8 @@ async function startDefinition() {
 				return false;
 			},
 
-			/**
-			 * Determines whether the loop can start by converting the step into a rule for "Assert" logic.
-			 * Invokes the rule to get the total count of elements (index). Returns true if index > 0.
-			 *
-			 * @async
-			 * @param {Object} options            - The options object containing references to the step and related automation objects.
-			 * @param {Object} options.step       - The current step configuration object.
-			 * @param {Object} options.client     - A reference to the client, which provides automation/rule conversion utilities.
-			 * @param {Object} options.automation - The automation instance being executed.
-			 * @param {Object} options.session    - The current session state passed between steps.
-			 * @returns {Promise<boolean>} True if the loop should start; false otherwise.
-			 */
-			assertCanStart: async (options) => {
-				// Remove the step type to prevent the step from being blocked and allow it to run as a rule (Assert)
-				options.step.type = undefined;
-
-				// Convert the step to a rule so it can be invoked in the automation engine
-				const rule = options.client.convertToRule(options.step);
-
-				// Override the plugin name to "Assert" for the "If" step
-				// This ensures the correct plugin is invoked under the sequential automation
-				rule.pluginName = "Assert";
-				rule.argument = "{{$ --Condition:ElementsCount --Expected:0 --Operator:Greater}}";
-
-				// Prepare the options object for invoking the step
-				const invokeOptions = {
-					automation: options.automation,
-					rule: rule,
-					session: options.session,
-					step: options.step
-				};
-
-				// Invoke the step asynchronously and wait for the result
-				const response = await StateMachine.invokeStep(options.client, invokeOptions);
-
-				// Locate the plugin result in the automation response
-				const plugin = options.client.findPlugin(options.step.id, response.automationResult);
-
-				// Extract the 'Actual' value (the element count) and convert it to a number
-				const index = parseInt(plugin?.extractions[0]?.entities[0]?.content['Actual'] || 0);
-
-				// Update the session with any new data from the response
-				options.session = response.session;
-
-				// Reset the step type to "loop" for the loop to continue
-				options.step.type = "loop";
-
-				// Return true if the index is greater than 0, indicating the loop should start
-				return index > 0;
+			assertCanStart: (options) => {
+				return true;
 			},
 
 			/**
@@ -401,6 +390,9 @@ async function startDefinition() {
 			 * @returns {Promise<void>} Resolves when initialization is complete.
 			 */
 			initialize: async (options) => {
+				// Resolve any macros in the step properties before proceeding
+				await handler.resolveMacros(options);
+
 				// Store the original locator (`onElement`) values for each step in the sequence
 				for (const index in options.step.sequence) {
 					const step = options.step.sequence[index];
@@ -499,7 +491,7 @@ async function startDefinition() {
 					}
 				}
 			}
-		}
+		},
 	};
 
 	const stateMachine = new StateMachine(definition, handler);

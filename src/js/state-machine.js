@@ -230,8 +230,16 @@ class StateMachine {
 				}
 			};
 
+			// Initialize options for the loop handler
+			const options = {
+				step,
+				client,
+				automation,
+				session
+			};
+
 			// Initialize the current step before processing its children
-			await handler.initializeStep({ automation, session, step, client });
+			await handler.initializeStep(options);
 
 			// Convert the step type to uppercase for easier checking
 			const stepType = step.type?.toUpperCase();
@@ -241,19 +249,6 @@ class StateMachine {
 
 			// If the step is a LOOP step, handle looping logic
 			if (stepType === "LOOP") {
-				// Initialize options for the loop handler
-				const options = {
-					step,
-					client, 
-					automation,
-					session
-				};
-
-				// Check if we can start the loop
-				const canLoopStart = await handler.assertCanLoopStart(options);
-				if (!canLoopStart) {
-					return;
-				}
 
 				// Continue looping as long as a condition is satisfied
 				while (await handler.assertCanLoopContinue(options)) {
@@ -263,14 +258,6 @@ class StateMachine {
 				// Exit after the loop is done
 				return;
 			}
-
-			// Build the options object to pass to the StateMachine
-			const options = {
-				client,
-				step,
-				automation,
-				session,
-			};
 
 			// Invoke the current step via the StateMachine
 			const response = await StateMachine.invokeStep(client, options);
