@@ -1,4 +1,4 @@
-/* global window, document, StateMachine, StateMachineSteps, sequentialWorkflowDesigner */
+/* global window, document */
 
 let _designer;
 let _cache = {};
@@ -6,96 +6,95 @@ let _cacheKeys = [];
 let _manifests = {};
 let _definition = {};
 
+/**
+ * Initializes and starts the workflow definition. This function checks whether the
+ * designer is in a valid and editable state, then sets it to read-only mode before
+ * creating and invoking the state machine that processes the workflow.
+ *
+ * @async
+ * @function startDefinition
+ * @returns {Promise<void>} Resolves when the workflow has been fully executed.
+ */
 async function startDefinition() {
+	// Check if the designer is in read-only mode - indicating the workflow is running
+	// If it is, exit the function early
 	if (_designer.isReadonly()) {
-		return;
-	}
-	if (!_designer.isValid()) {
-		window.alert('The definition is invalid');
+
 		return;
 	}
 
+	// Check if the designer is valid before proceeding
+	// If it is not, display an alert and exit the function
+	if (!_designer.isValid()) {
+		window.alert('The workflow definition is invalid. Please review and correct any errors.');
+		return;
+	}
+
+	// Set the designer to read-only mode to prevent further editing while the workflow is running
 	_designer.setIsReadonly(true);
 
-	const definition = _designer.getDefinition();
-
-	const whileLoopHandler = {
-		assertCanContinue: async (options) => {
-			// Remove the step type to prevent the step from being blocked and allow it to run as a rule (Assert)
-			options.step.type = undefined;
-
-			// Convert the step to a rule so it can be invoked in the automation engine.
-			const rule = options.client.convertToRule(options.step);
-
-			// Override the plugin name to "Assert" for the "If" step. This is necessary to ensure
-			// the correct plugin is invoked under the sequential automation specifically for "If" logic.
-			rule.pluginName = "Assert";
-
-			// Prepare the options object for invoking the step.
-			const invokeOptions = {
-				automation: options.automation,
-				rule: rule,
-				session: options.session,
-				step: options.step
-			};
-
-			// Invoke the step asynchronously and wait for the result.
-			const response = await StateMachine.invokeStep(options.client, invokeOptions);
-
-			// Locate the plugin in the automation result using the step ID.
-			const plugin = options.client.findPlugin(options.step.id, response.automationResult);
-
-			// Assert the plugin to determine if the loop should continue.
-			const assertion = options.client.assertPlugin(plugin);
-
-			// Update the session with any new data from the response.
-			options.session = response.session;
-
-			// Reset the step type to "loop" for the loop to continue
-			options.step.type = "loop";
-
-			// Store the assertion result for subsequent steps.
-			options.step.context['assertion'] = assertion;
-
-			// Return the assertion result to decide loop continuation (true/false).
-			return assertion;
-		},
-
-		assertCanStart: (options) => {
-			return true;
-		},
-
-		initialize: async (options) => {
-			await handler.resolveMacros(options);
-		}
-	};
-
+	// Initialize workflow handler with the current definition and start the workflow
 	const handler = {
+		/**
+		 * Determines if the loop can continue based on the current step's pluginName.
+		 * Depending on the loop type (FOR, FOREACH, WHILE), the corresponding handler is called.
+		 *
+		 * @async
+		 * @function
+		 * @name assertCanLoopContinue
+		 * @param {Object} options - The configuration object for the current step/automation.
+		 * @param {Object} options.step - The step object containing properties like `pluginName`.
+		 * @param {Object} options.session - The current session context, if any.
+		 * @param {Object} options.automation - The current automation instance.
+		 * @returns {Promise<boolean>} - Resolves to `true` if the loop should continue, otherwise `false`.
+		 */
 		assertCanLoopContinue: async (options) => {
+			// Check if the pluginName is "INVOKEFORLOOP" (case-insensitive),
+			// then delegate to forLoopHandler to decide continuation.
 			if (options.step.pluginName?.toLocaleUpperCase() === "INVOKEFORLOOP") {
 				return handler.forLoopHandler.assertCanContinue(options);
 			}
 
+			// If it's "INVOKEFOREACHLOOP", first call the 'set' method to update locators
+			// or other iteration-specific details, then check if it can continue.
 			if (options.step.pluginName?.toLocaleUpperCase() === "INVOKEFOREACHLOOP") {
 				handler.foreachLoopHandler.set(options);
 				return handler.foreachLoopHandler.assertCanContinue(options);
 			}
 
+			// If it's "INVOKEWHILELOOP", simply call whileLoopHandler to verify continuation.
 			if (options.step.pluginName?.toLocaleUpperCase() === "INVOKEWHILELOOP") {
-				return whileLoopHandler.assertCanContinue(options);
+				return handler.whileLoopHandler.assertCanContinue(options);
 			}
 		},
 
+		/**
+		 * Determines if a loop can start based on the current step's pluginName.
+		 * Depending on the loop type (FOR, FOREACH, WHILE), the corresponding handler is called.
+		 *
+		 * @async
+		 * @function
+		 * @name assertCanLoopStart
+		 * @param {Object} options            - The configuration object for the current step/automation.
+		 * @param {Object} options.step       - The step object containing properties like `pluginName`.
+		 * @param {Object} options.session    - The current session context, if any.
+		 * @param {Object} options.automation - The current automation instance.
+		 * @returns {Promise<boolean>} - Resolves to `true` if the loop should start, otherwise `false`.
+		 */
 		assertCanLoopStart: async (options) => {
+			// If the pluginName is "INVOKEFORLOOP", delegate loop-start logic to forLoopHandler.
 			if (options.step.pluginName?.toLocaleUpperCase() === "INVOKEFORLOOP") {
 				return handler.forLoopHandler.assertCanStart(options);
 			}
+
+			// If the pluginName is "INVOKEFOREACHLOOP", use the foreachLoopHandler's start logic.
 			if (options.step.pluginName?.toLocaleUpperCase() === "INVOKEFOREACHLOOP") {
 				return handler.foreachLoopHandler.assertCanStart(options);
 			}
 
+			// If the pluginName is "INVOKEWHILELOOP", use the whileLoopHandler's start logic.
 			if (options.step.pluginName?.toLocaleUpperCase() === "INVOKEWHILELOOP") {
-				return whileLoopHandler.assertCanStart(options);
+				return handler.whileLoopHandler.assertCanStart(options);
 			}
 		},
 
@@ -109,9 +108,15 @@ async function startDefinition() {
 		 * @param {string} [step.type] - The type of the step (e.g., "IF").
 		 * @returns {Promise<string>} A promise that resolves with the branch name or indication of how the automation logic should proceed.
 		 */
-		assertPlugin: async (step) => {
+		assertPlugin: async (options) => {
+			// Store the original step type to restore it after the assertion is complete.
+			const originalStepType = options.step.pluginType;
+
+			// Remove the step type to prevent it from being blocked and allow it to run as a rule (Assert).
+			options.step.type = undefined;
+
 			// Convert the step object into a rule object that can be processed.
-			const rule = client.convertToRule(step);
+			const rule = options.client.convertToRule(options.step);
 
 			// Override the plugin name to "Assert" specifically for the "If" step.
 			// This ensures the correct plugin is invoked in a sequential workflow scenario.
@@ -119,25 +124,32 @@ async function startDefinition() {
 
 			// Prepare the options object for the step invocation.
 			// Note that automation and session are assumed to be accessible in this scope.
-			const options = {
-				automation: automation,
-				rule: rule,
-				session: session,
-				step: step
-			};
+			options.rule = rule;
 
 			// Invoke the step asynchronously through the StateMachine and wait for the result.
-			const response = await StateMachine.invokeStep(client, options);
+			const response = await StateMachine.invokeStep(options.client, options);
 
 			// Identify the plugin used based on the step ID and the automation result returned.
-			const plugin = client.findPlugin(step.id, response.automationResult);
+			const plugin = options.client.findPlugin(options.step.id, response.automationResult);
+
+			// Assert the plugin to determine the outcome of the assertion.
+			const assertion = options.client.assertPlugin(plugin);
 
 			// Update the session from the response for potential use in subsequent steps.
-			session = response.session;
+			options.session = response.session;
+
+			// Reset the step type to "originalStepType" so the automation engine knows to continue.
+			options.step.type = originalStepType;
+
+			// Store the assertion result for reference in future steps.
+			options.step.context['assertion'] = assertion;
 
 			// Evaluate the plugin to determine the assertion outcome (e.g., which branch to follow).
 			// This typically returns a string representing the branch name (like "trueBranch" or "falseBranch").
-			return client.assertPlugin(plugin);
+			return {
+				assertion,
+				plugin
+			};
 		},
 
 		/**
@@ -154,20 +166,20 @@ async function startDefinition() {
 		 * @param {Array}  [step.sequence] - Default sequence to return if the step is not an "IF" type
 		 * @returns {Promise<Array>} A promise that resolves to the appropriate sequence based on the step type
 		 */
-		getSequence: async (step) => {
+		getSequence: async (options) => {
 			// Convert the type to upper case and check if it is NOT equal to "IF".
 			// If it isn't "IF", just return `step.sequence` or an empty array.
-			if (step.type?.toLocaleUpperCase() !== "IF") {
-				return step.sequence || [];
+			if (options.step.type?.toLocaleUpperCase() !== "IF") {
+				return options.step.sequence || [];
 			}
 
 			// If the step is an "IF" type, use the handler to figure out which branch to follow.
 			// `handler.assert(step)` should return the branch key as a string, e.g., "trueBranch" or "falseBranch".
-			const branch = await handler.assertPlugin(step);
+			const branch = await handler.assertPlugin(options.step).assertion;
 
 			// Return the sequence stored under the key that matches the evaluated branch.
 			// This allows dynamic branching based on the result of `handler.assert(step)`.
-			return step.branches[`${branch}`];
+			return options.step.branches[`${branch}`];
 		},
 
 		/**
@@ -217,6 +229,24 @@ async function startDefinition() {
 			return new Promise((resolve) => setTimeout(resolve, ms));
 		},
 
+		/**
+		 * Resolves macros and updates step properties using a specified or derived rule.
+		 * This function can convert a step to a rule if none is provided, invoke macro resolution,
+		 * and update the step properties accordingly. It also supports specifying a session to
+		 * set driver parameters dynamically in the automation config.
+		 *
+		 * @async
+		 * @function
+		 * @name resolveMacros
+		 * @param {Object} options            - The configuration object for the macro resolution process.
+		 * @param {Object} options.step       - The current step configuration object.
+		 * @param {Object} [options.rule]     - An optional rule object, bypassing the need to convert the step into a rule.
+		 * @param {Object} options.client     - Reference to a client object providing automation utilities (e.g., `convertToRule`, `resolveMacros`).
+		 * @param {Object} options.automation - The automation configuration, which includes stages, jobs, and driver parameters.
+		 * @param {string} [options.session]  - The session identifier, which can be used to update driver parameters.
+		 * @returns {Promise<void>} Resolves when the macro resolution has completed and the step properties have been updated.
+		 * @throws Will throw an error if macro resolution fails.
+		 */
 		resolveMacros: async (options) => {
 			// Determine whether to use the provided rule or convert the step into a rule using the client's method.
 			const rule = options.rule ? options.rule : options.client.convertToRule(options.step);
@@ -284,7 +314,15 @@ async function startDefinition() {
 				return --options.step.context['index'] >= 0;
 			},
 
-			assertCanStart: (options) => {
+			/**
+			 * Checks whether the while loop can start. In this particular handler,
+			 * it always returns true, indicating the loop can begin.
+			 *
+			 * @function
+			 * @name assertCanStart
+			 * @returns {boolean} - Always returns true for a while loop.
+			 */
+			assertCanStart: () => {
 				return true;
 			},
 
@@ -372,7 +410,15 @@ async function startDefinition() {
 				return false;
 			},
 
-			assertCanStart: (options) => {
+			/**
+			 * Checks whether the while loop can start. In this particular handler,
+			 * it always returns true, indicating the loop can begin.
+			 *
+			 * @function
+			 * @name assertCanStart
+			 * @returns {boolean} - Always returns true for a while loop.
+			 */
+			assertCanStart: () => {
 				return true;
 			},
 
@@ -492,9 +538,70 @@ async function startDefinition() {
 				}
 			}
 		},
+
+		whileLoopHandler: {
+			/**
+			 * Evaluates if the while loop can continue on the current iteration.
+			 * This method temporarily converts the step into an "Assert" rule,
+			 * invokes it, and bases the continuation on the assertion result.
+			 *
+			 * @async
+			 * @function
+			 * @name assertCanContinue
+			 * @param {Object} options            - The configuration object passed to the method.
+			 * @param {Object} options.step       - The current step configuration, including `type`, `pluginName`, `context`, etc.
+			 * @param {Object} options.client     - Reference to the automation client (contains methods like `convertToRule` and `assertPlugin`).
+			 * @param {Object} options.session    - Current session data passed through the automation flow.
+			 * @param {Object} options.automation - The overall automation instance handling the flow.
+			 * @returns {Promise<boolean>} - Resolves to `true` if the loop should continue; `false` otherwise.
+			 */
+			assertCanContinue: async (options) => {
+				// Assert if the while loop should continue based on the current options
+				return await handler.assertPlugin(options).assertion;
+			},
+
+			/**
+			 * Checks whether the while loop can start. In this particular handler,
+			 * it always returns true, indicating the loop can begin.
+			 *
+			 * @function
+			 * @name assertCanStart
+			 * @returns {boolean} - Always returns true for a while loop.
+			 */
+			assertCanStart: () => {
+				return true;
+			},
+
+			/**
+			 * Performs any necessary initialization for the while loop before
+			 * iterations begin. This may include macro resolution, updating
+			 * contextual data, etc.
+			 *
+			 * @async
+			 * @function
+			 * @name initialize
+			 * @param {Object} options            - The configuration object passed to the method.
+			 * @param {Object} options.step       - The current step configuration.
+			 * @param {Object} options.client     - Reference to the automation client.
+			 * @param {Object} options.session    - The current session data.
+			 * @param {Object} options.automation - The overall automation instance.
+			 * @returns {Promise<void>} - Resolves when the initialization is complete.
+			 */
+			initialize: async (options) => {
+				// Call a method to resolve macros or other dynamic placeholders in the step.
+				await handler.resolveMacros(options);
+			}
+		}
 	};
 
+	// Retrieve the current definition from the designer
+	const definition = _designer.getDefinition();
+
+	// Initialize the state machine with the definition and handler objects created above
 	const stateMachine = new StateMachine(definition, handler);
+
+	// Start the workflow execution using the state machine instance
+	// created above and wait for it to complete
 	await stateMachine.start();
 }
 
@@ -1224,7 +1331,11 @@ function stepEditorProvider(step, editorContext, _definition) {
 			parameter = step.parameters[key];
 		}
 
+		// normalize the key to ensure it is in the correct format
+
+
 		// Determine the nature of the parameter to decide which input field to create.
+		const label = convertPascalToSpaceCase(convertToPascalCase(key));
 		const isListField = _cacheKeys.includes(parameter.type?.toUpperCase());
 		const isOptionsField = parameter.optionsList && parameter.optionsList.length > 0;
 		const isArray = parameter.type?.toUpperCase() === 'ARRAY';
@@ -1240,7 +1351,7 @@ function stepEditorProvider(step, editorContext, _definition) {
 				{
 					container: container,
 					initialValue: parameter.value,
-					label: key,
+					label: label,
 					title: parameter.description
 				},
 				(value) => {
@@ -1265,7 +1376,7 @@ function stepEditorProvider(step, editorContext, _definition) {
 				{
 					container: container,
 					initialValue: parameter.value,
-					label: key,
+					label: label,
 					title: parameter.description
 				},
 				(value) => {
@@ -1290,7 +1401,7 @@ function stepEditorProvider(step, editorContext, _definition) {
 				{
 					container: container,
 					initialValue: parameter.value,
-					label: key,
+					label: label,
 					title: parameter.description
 				},
 				(value) => {
@@ -1318,7 +1429,7 @@ function stepEditorProvider(step, editorContext, _definition) {
 					container: container,
 					initialValue: parameter.value,
 					itemSource: itemSource,
-					label: key,
+					label: label,
 					title: parameter.description
 				},
 				(value) => {
@@ -1344,7 +1455,7 @@ function stepEditorProvider(step, editorContext, _definition) {
 				container: container,
 				initialValue: parameter.value,
 				isReadonly: false,
-				label: key,
+				label: label,
 				title: parameter.description
 			},
 			(value) => {

@@ -693,7 +693,7 @@ class CustomG4Fields {
                 container: controller,
                 initialValue: options.initialValue?.loadTimeout || 60000,
                 isReadonly: false,
-                label: 'LoadTimeout',
+                label: 'Load Timeout',
                 step: 1,
                 title: 'The maximum time (in milliseconds) the driver should wait for a page to load when setting the `IWebDriver.Url` property.',
             },
@@ -713,7 +713,7 @@ class CustomG4Fields {
                 container: controller,
                 initialValue: options.initialValue?.maxParallel || 1,
                 isReadonly: false,
-                label: "MaxParallel",
+                label: "Max Parallel",
                 step: 1,
                 title: "The number of parallel rows to execute actions based on `G4DataProvider`."
             },
@@ -731,7 +731,7 @@ class CustomG4Fields {
             {
                 container: controller,
                 initialValue: options.initialValue?.returnFlatResponse || false,
-                label: "ReturnFlatResponse",
+                label: "Return Flat Response",
                 title: "Indicates whether to includes a flattened format within the `responseData` field of the response."
             },
             (value) => {
@@ -748,7 +748,7 @@ class CustomG4Fields {
             {
                 container: controller,
                 initialValue: options.initialValue?.returnStructuredResponse || false,
-                label: "ReturnStructuredResponse",
+                label: "Return Structured Response",
                 title: "Indicates whether to includes a structured format within the `responseTree` field of the response."
             },
             (value) => {
@@ -767,7 +767,7 @@ class CustomG4Fields {
                 container: controller,
                 initialValue: options.initialValue?.searchTimeout || 15000,
                 isReadonly: false,
-                label: "SearchTimeout",
+                label: "Search Timeout",
                 title: "The maximum time (in milliseconds) to wait for an element to be found during searches.",
                 step: 1
             },
@@ -994,7 +994,7 @@ class CustomG4Fields {
                 container: controller,
                 initialValue: options.initialValue?.source || '',
                 isReadonly: false,
-                label: 'source',
+                label: 'Source',
                 title: 'Specifies the connection string, file path, or URL needed to locate the repository.'
             },
             (value) => {
@@ -1364,7 +1364,7 @@ class CustomG4Fields {
                 container: controller,
                 initialValue: options.initialValue?.driverBinaries || '.',
                 isReadonly: false,
-                label: 'DriverBinaries',
+                label: 'Driver Binaries',
                 title: 'The driver binaries location on local machine or grid endpoint.'
             },
             (value) => {
@@ -1465,7 +1465,7 @@ class CustomG4Fields {
                 container: controller,
                 initialValue: options.initialValue?.defaultEnvironment || 'SystemParameters',
                 isReadonly: false,
-                label: 'DefaultEnvironment',
+                label: 'Default Environment',
                 title: 'The default environment to use for automation requests.'
             },
             (value) => {
@@ -1483,7 +1483,7 @@ class CustomG4Fields {
             {
                 container: controller,
                 initialValue: options.initialValue?.returnEnvironment || false,
-                label: 'ReturnEnvironment',
+                label: 'Return Environment',
                 title: 'Indicates whether the environment should be returned in the response.'
             },
             (value) => {
@@ -1501,7 +1501,7 @@ class CustomG4Fields {
             {
                 container: controller,
                 initialValue: options.initialValue?.environmentVariables || {},
-                label: 'EnvironmentVariables',
+                label: 'Environment Variables',
                 title: 'A list of static environment variables to use for automation requests.'
             },
             (value) => {
@@ -1568,7 +1568,7 @@ class CustomG4Fields {
             {
                 container: controller,
                 initialValue: options.initialValue?.returnExceptions || false,
-                label: 'ReturnExceptions',
+                label: 'Return Exceptions',
                 title: 'Indicates whether the exceptions should be returned in the response.'
             },
             (value) => {
@@ -1728,7 +1728,7 @@ class CustomG4Fields {
             {
                 container: controller,
                 initialValue: options.initialValue?.returnPerformancePoints || false,
-                label: 'ReturnPerformancePoints',
+                label: 'Return Performance Points',
                 title: 'Indicates whether the performance points should be returned in the response.'
             },
             (value) => {
@@ -1899,7 +1899,7 @@ class CustomG4Fields {
             {
                 container: fieldContainer,
                 initialValue: forceRuleReference,
-                label: 'ForceRuleReference',
+                label: 'Force Rule Reference',
                 title: 'Indicates whether rule references should be forced when reused across different jobs. When set to `true` (the default), a new copy of the rule with a new reference will be created.'
             },
             (value) => {
@@ -1971,7 +1971,7 @@ class CustomG4Fields {
                 container: controller,
                 initialValue: options.initialValue?.outputFolder || '.',
                 isReadonly: false,
-                label: 'OutputFolder',
+                label: 'Output Folder',
                 title: 'Specifies the default folder path for saving screenshots.'
             },
             (value) => {
@@ -1993,7 +1993,7 @@ class CustomG4Fields {
             {
                 container: controller,
                 initialValue: options.initialValue?.convertToBase64 || false,
-                label: 'ConvertToBase64',
+                label: 'Convert To Base64',
                 title: 'Indicates whether screenshots should be converted to Base64 strings. The Base64 data will be included in the response.'
             },
             (value) => {
@@ -2012,7 +2012,7 @@ class CustomG4Fields {
             {
                 container: controller,
                 initialValue: options.initialValue?.onExceptionOnly || false,
-                label: 'ExceptionsOnly',
+                label: 'Exceptions Only',
                 title: 'Indicates whether screenshots should be captured only on exceptions.'
             },
             (value) => {
@@ -2031,7 +2031,7 @@ class CustomG4Fields {
             {
                 container: controller,
                 initialValue: options.initialValue?.returnScreenshots || false,
-                label: 'ReturnScreenshots',
+                label: 'Return Screenshots',
                 title: 'Indicates whether screenshots should be returned in the response.'
             },
             (value) => {
@@ -2195,7 +2195,7 @@ class CustomFields {
         const mainInputValue = values.length > 0 ? values.shift() : '';
 
         // Convert the label from PascalCase to a space-separated format for better readability
-        const labelDisplayName = convertPascalToSpaceCase(options.label);
+        const labelDisplayName = options.label;
 
         // Create the primary field container using a helper function
         const fieldContainer = newFieldContainer(inputId, labelDisplayName, options.title);
@@ -2335,7 +2335,7 @@ class CustomFields {
         const inputId = newUid();
 
         // Convert the label from PascalCase to a space-separated format for display
-        const labelDisplayName = convertPascalToSpaceCase(options.label);
+        const labelDisplayName = options.label;
 
         // Retrieve and process items from the provided item source
         const items = getItems(options.itemSource);
@@ -2793,7 +2793,7 @@ class CustomFields {
         const inputId = newUid();
 
         // Convert the label from PascalCase to a space-separated format for display purposes
-        const labelDisplayName = convertPascalToSpaceCase(options.label);
+        const labelDisplayName = options.label;
 
         // Process the items source to get a sorted items object
         const items = getItems(options.itemsSource);
@@ -2898,7 +2898,7 @@ class CustomFields {
         const pluginName = convertPascalToSpaceCase(options.step.pluginName);
 
         // Convert the label from PascalCase to a space-separated format for display purposes.
-        const labelDisplayName = convertPascalToSpaceCase(options.label);
+        const labelDisplayName = options.label;
 
         /**
          * Validate and sanitize the initial value.
@@ -3012,7 +3012,7 @@ class CustomFields {
         const inputId = newUid();
 
         // Convert the label from PascalCase to a space-separated format for display purposes.
-        const labelDisplayName = convertPascalToSpaceCase(options.label);
+        const labelDisplayName = options.label;
 
         /**
          * Validate and sanitize the initial value.
@@ -3150,7 +3150,7 @@ class CustomFields {
         const inputId = newUid();
 
         // Convert the label from PascalCase to a space-separated format for display purposes.
-        const labelDisplayName = convertPascalToSpaceCase(options.label);
+        const labelDisplayName = options.label;
 
         /**
          * Validate and sanitize the initial value.
@@ -3231,7 +3231,7 @@ class CustomFields {
         const inputId = newUid();
 
         // Convert the label from PascalCase to a space-separated format for display purposes
-        const labelDisplayName = convertPascalToSpaceCase(options.label);
+        const labelDisplayName = options.label;
 
         /**
          * Validate and sanitize the initial value.
@@ -3314,7 +3314,7 @@ class CustomFields {
         const inputId = newUid();
 
         // Convert the label from PascalCase to a space-separated format for display purposes
-        const labelDisplayName = convertPascalToSpaceCase(options.label);
+        const labelDisplayName = options.label;
 
         /**
          * Validate and sanitize the initial value.
