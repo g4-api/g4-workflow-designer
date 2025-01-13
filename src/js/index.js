@@ -1541,6 +1541,7 @@ function stepEditorProvider(step, editorContext, _definition) {
 	 * Iterate through each sorted property key to initialize corresponding input fields.
 	 * Certain properties like 'Argument' and 'Rules' are conditionally skipped based on the presence of parameters.
 	 */
+	const validProperties = [];
 	for (let index = 0; index < sortedProperties.length; index++) {
 		// Retrieve the current property key from the sorted list.
 		const key = sortedProperties[index];
@@ -1549,10 +1550,11 @@ function stepEditorProvider(step, editorContext, _definition) {
 		const skip = (hasParameters && key.toUpperCase() === 'ARGUMENT') || key.toUpperCase() === 'RULES';
 
 		// Update the sorted properties list to exclude the skipped property.
-		sortedProperties = skip ? sortedProperties.filter((property) => property !== key) : sortedProperties;
+		//sortedProperties = skip ? sortedProperties.filter((property) => property !== key) : sortedProperties;
 
 		// Skip the property if it meets the conditions above.
 		if (!skip) {
+			validProperties.push(key);
 			initializeField(propertiesControllerContainer, key, step, "properties");
 		}
 	}
@@ -1560,7 +1562,7 @@ function stepEditorProvider(step, editorContext, _definition) {
 	/**
 	 * Append the Properties section to the main container if there are any properties to display.
 	 */
-	if (sortedProperties.length > 0) {
+	if (validProperties.length > 0) {
 		stepEditorContainer.appendChild(propertiesFieldContainer);
 	}
 
