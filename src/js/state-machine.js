@@ -93,6 +93,8 @@ function convertToPascalCase(str) {
 }
 
 class StateMachine {
+	isInterrupted = false;
+
 	constructor(definition, handler) {
 		this.definition = definition;
 		this.speed = definition.properties["speed"];
@@ -199,7 +201,7 @@ class StateMachine {
 		const client = new G4Client();
 
 		// Instantiate a new automation object from the client
-		const automation = client.newAutomation(undefined, undefined);
+		const automation = client.newAutomation(definition);
 
 		// Used to store session data between steps
 		let session = undefined;
@@ -217,6 +219,12 @@ class StateMachine {
 		 * @returns {Promise<void>} Resolves when the step (and its children) have finished processing.
 		 */
 		const invoke = async (automation, client, handler, step, speed) => {
+			// if (this.isInterrupted) {
+			// 	// Set the designer to read-only mode to prevent further editing while the workflow is running
+			// 	_designer.setIsReadonly(false);
+			// 	throw new Error('Interrupted');
+			// }
+
 			/**
 			 * Invokes each child step in the provided sequence with a delay in between steps.
 			 *
@@ -302,6 +310,13 @@ class StateMachine {
 		// Reset the designer or UI state after all steps have been processed
 		this.handler.resetDesigner();
 	}
+
+	// interrupt() {
+	// 	if (!this.isRunning) {
+	// 		throw new Error('Not running');
+	// 	}
+	// 	this.isInterrupted = true;
+	// }
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -1308,28 +1323,72 @@ class G4Client {
 		}
 	}
 
-	newAutomation(authentication, driverParameters) {
-		driverParameters = driverParameters || {
-			"driver": "MicrosoftEdgeDriver",
-			//"driverBinaries": "https://gravityapi1:pyhBifB6z1YxJv53xLip@hub-cloud.browserstack.com/wd/hub",
-			"driverBinaries": "E:\\Binaries\\Automation\\WebDrivers",
-			"capabilities": {
-				"alwaysMatch": {
-					"browserName": "MicrosoftEdge"
-				},
-				"firstMatch": [
-					{}
-				]
+	newAutomation(definition) {
+		/**
+		 * Formats and merges driver parameters, ensuring that vendor-specific capabilities
+		 * are placed under the correct keys (e.g., `{ vendorName }:options`). This function
+		 * constructs a standardized `parameters` object that can be passed to a WebDriver
+		 * or similar driver-configuration mechanism.
+		 *
+		 * @function formatDriverParameters
+		 * @param {Object} [driverParameters] - The raw driver parameters, potentially containing capabilities and vendor-specific settings.
+		 * @param {Object} [driverParameters.capabilities]                    - Root WebDriver capabilities.
+		 * @param {Object} [driverParameters.capabilities.vendorCapabilities] - An object mapping vendor keys to vendor-specific capabilities.
+		 * @param {string} [driverParameters.driver]                          - The driver identifier (e.g., a browser driver name).
+		 * @param {Object} [driverParameters.driverBinaries]                  - Driver-specific binaries or paths.
+		 * @returns {Object} A new parameters object with correctly placed vendor options, or the original `driverParameters` if capabilities are missing.
+		 */
+		const formatDriverParameters = (driverParameters) => {
+			// Extract the main capabilities and vendor capabilities from the input object
+			const capabilities = driverParameters?.capabilities || {};
+			const vendorCapabilities = capabilities.vendorCapabilities || {};
+
+			// Create a base parameters object with minimal fields
+			let parameters = {
+				capabilities: {},
+				driver: driverParameters?.driver,
+				driverBinaries: driverParameters?.driverBinaries,
+			};
+
+			// If there are no capabilities or vendorCapabilities, return the original object
+			if (!capabilities || !vendorCapabilities) {
+				return driverParameters;
 			}
-		};
-		authentication = authentication || {
-			username: "pyhBifB6z1YxJv53xLip",
-			password: ""
+
+			// Assign the alwaysMatch and firstMatch capabilities directly
+			parameters.capabilities.alwaysMatch = capabilities.alwaysMatch;
+			parameters.capabilities.firstMatch = capabilities.firstMatch;
+
+			// Loop through each vendor key and add its capabilities under `{vendor}:options`
+			const vendorKeys = Object.keys(vendorCapabilities);
+			for (const vendorKey of vendorKeys) {
+				// Construct the vendor options key, e.g., "goog:chrome:options"
+				const vendorOptionsKey = `${vendorCapabilities[vendorKey]?.vendor}:options`;
+
+				// Add the vendor-specific capabilities to alwaysMatch under the new key
+				parameters.capabilities.alwaysMatch[vendorOptionsKey] = vendorCapabilities[vendorKey]?.capabilities;
+			}
+
+			// Return the fully constructed parameters object
+			return parameters;
 		};
 
+		// Extract the authentication parameters from the definition properties
+		const authentication = definition.properties["authentication"];
+
+		// Extract the driver parameters from the definition properties
+		const driverParameters = formatDriverParameters(definition.properties["driverParameters"]);
+
+		// Return a newly constructed automation object
+		// containing one stage and one job by default.
 		return {
-			authentication,
-			driverParameters,
+			// Store any authentication details passed in
+			authentication: authentication,
+
+			// Include optional driver parameters (e.g., session data)
+			driverParameters: driverParameters,
+
+			// Define a default 'Main Stage' with a single job and no rules
 			stages: [
 				{
 					description: "Main Stage",
@@ -1337,8 +1396,7 @@ class G4Client {
 						{
 							description: "Main Stage",
 							name: "Main Stage",
-							rules: [
-							]
+							rules: []
 						}
 					],
 					name: "Main Stage"

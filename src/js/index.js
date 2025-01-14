@@ -906,13 +906,24 @@ function newConfiguration() {
  * @returns {Object} An object representing the start definition, containing default properties and the provided sequence.
  */
 function newStartDefinition(sequence) {
-	//const manifest = {};
-	//var step = StateMachineSteps.newG4Step(_manifests["WriteLog"]);
-
 	return {
 		id: uid(),
 		// Default properties for the start definition.
 		properties: {
+			authentication: {
+				username: "pyhBifB6z1YxJv53xLip",
+				password: ""
+			},
+			driverParameters: {
+				driver: "MicrosoftEdgeDriver",
+				driverBinaries: ".",
+				capabilities: {
+					alwaysMatch: {},
+					firstMatch: [
+						{}
+					]
+				}
+			},
 			speed: 300
 		},
 		// The provided sequence of steps or containers.
@@ -1303,10 +1314,9 @@ function rootEditorProvider(definition, editorContext, isReadonly) {
  *
  * @param {Object} step          - The plugin step configuration object.
  * @param {Object} editorContext - The context object for the editor, used for notifying changes.
- * @param {Object} _definition   - Additional definition or metadata for the step (unused in this function).
  * @returns {HTMLElement} The fully populated step editor container element.
  */
-function stepEditorProvider(step, editorContext, _definition) {
+function stepEditorProvider(step, editorContext) {
 	/**
 	 * Initializes and appends the appropriate input field to the container based on the parameter type.
 	 *
