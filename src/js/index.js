@@ -924,6 +924,24 @@ function newStartDefinition(sequence) {
 					]
 				}
 			},
+			settings: {
+				automationSettings: {
+					loadTimeout: 60000,
+					maxParallel: 1,
+					returnStructuredResponse: false,
+					searchTimeout: 15000,
+				},
+				environmentSettings: {
+					defaultEnvironment: "SystemParameters",
+					returnEnvironment: false
+				},
+				screenshotsSettings: {
+					outputFolder: ".",
+					convertToBase64: false,
+					exceptionsOnly: false,
+					returnScreenshots: false
+				}
+			},
 			speed: 300
 		},
 		// The provided sequence of steps or containers.

@@ -1379,14 +1379,19 @@ class G4Client {
 		// Extract the driver parameters from the definition properties
 		const driverParameters = formatDriverParameters(definition.properties["driverParameters"]);
 
+		const settings = definition.properties["settings"] || undefined;
+
 		// Return a newly constructed automation object
 		// containing one stage and one job by default.
 		return {
 			// Store any authentication details passed in
-			authentication: authentication,
+			authentication,
 
 			// Include optional driver parameters (e.g., session data)
-			driverParameters: driverParameters,
+			driverParameters,
+
+			// Include any additional settings (e.g., timeouts, logging)
+			settings,
 
 			// Define a default 'Main Stage' with a single job and no rules
 			stages: [
